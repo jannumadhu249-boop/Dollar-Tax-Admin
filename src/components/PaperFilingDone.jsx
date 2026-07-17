@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { Eye } from 'lucide-react';
-import PaperFilingView from './PaperFilingView';
+import PaperFilingDoneView from './PaperFilingDoneView';
 
 /* ─────────────────────────────────────────────────────────────
-   Mock data — 20 rows matching the "Paper Filing Done" screenshot
-   (used for 'done'; 'pending' starts with an empty list = 0)
+   Mock data — Paper Filing Done records
 ───────────────────────────────────────────────────────────── */
 const DONE_DATA = [
   { sNo: 1,  name: 'Durga Prasad Yarubandi',          fileNo: '100240', filingType: 'Paper Filling', email: 'durga.yarubandi@gmail.com',       regDate: '2026-01-30 08:41:25', status: 'Paper Filing Done', statusDate: '2026-06-19 02:00:36' },
@@ -39,13 +38,9 @@ const getMaskedEmail = (email) => {
 };
 
 /* ─────────────────────────────────────────────────────────────
-   Main Component
-   prop: mode = 'pending' | 'done'
+   PaperFilingDone — Paper Filing Done list + detail view
 ───────────────────────────────────────────────────────────── */
-export default function PaperFiling({ mode = 'pending' }) {
-  const isPending = mode === 'pending';
-  const title     = isPending ? 'Paper Filing Pending' : 'Paper Filing Done';
-
+export default function PaperFilingDone() {
   /* State */
   const [filterDate,      setFilterDate]      = useState('');
   const [activeSubTab,    setActiveSubTab]     = useState('New');
@@ -62,16 +57,12 @@ export default function PaperFiling({ mode = 'pending' }) {
   const [commentText,     setCommentText]      = useState('');
   const [commentStatus,   setCommentStatus]    = useState('Paper Filing Done');
   const [commentsHistory, setCommentsHistory]  = useState({});
-  // statusOverrides holds any in-session status changes keyed by sNo
   const [statusOverrides, setStatusOverrides]  = useState({});
 
   const ROWS_PER_PAGE = 20;
 
-  // Always derive base data from the mode prop — never store it in state
-  const baseData = isPending ? [] : DONE_DATA;
-
   // Apply any in-session status overrides
-  const members = baseData.map(m =>
+  const members = DONE_DATA.map(m =>
     statusOverrides[m.sNo] ? { ...m, ...statusOverrides[m.sNo] } : m
   );
 
@@ -85,9 +76,8 @@ export default function PaperFiling({ mode = 'pending' }) {
     return matchSearch && matchDate;
   });
 
-  const totalPages  = Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE));
-  const pageRows    = filtered.slice((currentPage - 1) * ROWS_PER_PAGE, currentPage * ROWS_PER_PAGE);
-  const totalBadge  = isPending ? 0 : TOTAL_DONE;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE));
+  const pageRows   = filtered.slice((currentPage - 1) * ROWS_PER_PAGE, currentPage * ROWS_PER_PAGE);
 
   /* OTP flow */
   const handleEyeClick = (fieldKey, isUnmasked) => {
@@ -111,7 +101,6 @@ export default function PaperFiling({ mode = 'pending' }) {
     const dt  = `${pad(now.getMonth()+1)}-${pad(now.getDate())}-${now.getFullYear()} :: ${pad(now.getHours())}:${pad(now.getMinutes())}`;
     const entry = { status: commentStatus, comments: commentText, dateTime: dt };
     setCommentsHistory(prev => ({ ...prev, [selectedMember.sNo]: [entry, ...(prev[selectedMember.sNo] || [])] }));
-    // Persist status override without touching baseData
     setStatusOverrides(prev => ({ ...prev, [selectedMember.sNo]: { status: commentStatus, statusDate: dt } }));
     setSelectedMember(prev => ({ ...prev, status: commentStatus, statusDate: dt }));
     setCommentText('');
@@ -139,7 +128,7 @@ export default function PaperFiling({ mode = 'pending' }) {
             {pageRows.length === 0 ? (
               <tr>
                 <td colSpan="9" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                  {isPending ? 'No pending paper filing records found.' : 'No records found.'}
+                  No records found.
                 </td>
               </tr>
             ) : (
@@ -175,9 +164,7 @@ export default function PaperFiling({ mode = 'pending' }) {
                   </td>
                   <td style={{ color: 'var(--text-muted)' }}>{m.regDate}</td>
                   <td>
-                    <span style={{ color: '#28a745', fontWeight: '600' }}>
-                      {m.status}
-                    </span>
+                    <span style={{ color: '#28a745', fontWeight: '600' }}>{m.status}</span>
                   </td>
                   <td style={{ color: 'var(--text-muted)' }}>{m.statusDate}</td>
                   <td style={{ textAlign: 'center' }}>
@@ -220,17 +207,6 @@ export default function PaperFiling({ mode = 'pending' }) {
           </div>
         </div>
       )}
-
-      {/* Minimal pagination for pending (empty table) */}
-      {isPending && (
-        <div className="pagination-row" style={{ marginTop: '12px' }}>
-          <button className="page-link-btn active">1</button>
-          <button className="page-link-btn">2</button>
-          <button className="page-link-btn">3</button>
-          <button className="page-link-btn">›</button>
-          <button className="page-link-btn">Last »</button>
-        </div>
-      )}
     </>
   );
 
@@ -240,7 +216,7 @@ export default function PaperFiling({ mode = 'pending' }) {
 
       {/* Header row */}
       <div className="header-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-light)', paddingBottom: '12px', marginBottom: '20px' }}>
-        <h2 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>{title}</h2>
+        <h2 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>Paper Filing Done</h2>
         <input
           type="date"
           className="date-picker-box"
@@ -268,7 +244,7 @@ export default function PaperFiling({ mode = 'pending' }) {
               >
                 Last modified Members
               </button>
-              <span className="pill-badge">Total {totalBadge}</span>
+              <span className="pill-badge">Total {TOTAL_DONE}</span>
             </div>
 
             <div className="filter-right-inputs">
@@ -296,9 +272,9 @@ export default function PaperFiling({ mode = 'pending' }) {
         </>
       )}
 
-      {/* Content: detail view (via PaperFilingView) or table list */}
+      {/* Content: detail view (via PaperFilingDoneView) or table list */}
       {selectedMember ? (
-        <PaperFilingView
+        <PaperFilingDoneView
           selectedMember={selectedMember}
           activeDetailTab={activeDetailTab}
           setActiveDetailTab={setActiveDetailTab}
@@ -337,7 +313,11 @@ export default function PaperFiling({ mode = 'pending' }) {
                 </div>
               )}
               <div className="form-group">
-                <input type="text" className="form-input" placeholder="Enter 6-digit code" value={otpInput}
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Enter 6-digit code"
+                  value={otpInput}
                   onChange={e => setOtpInput(e.target.value)}
                   style={{ padding: '10px', textAlign: 'center', fontSize: '16px', letterSpacing: '1px' }}
                   maxLength={6}
@@ -346,7 +326,9 @@ export default function PaperFiling({ mode = 'pending' }) {
             </div>
             <div className="modal-footer">
               <button className="btn btn-secondary" style={{ padding: '8px 16px' }} onClick={() => setShowOtpModal(false)}>Cancel</button>
-              <button className="btn btn-primary" style={{ padding: '8px 16px', background: 'var(--bg-navbar)' }}
+              <button
+                className="btn btn-primary"
+                style={{ padding: '8px 16px', background: 'var(--bg-navbar)' }}
                 onClick={() => {
                   if (otpInput === verificationOtp) {
                     setUnmaskedFields(prev => ({ ...prev, [verificationKey]: true }));
@@ -354,7 +336,8 @@ export default function PaperFiling({ mode = 'pending' }) {
                   } else {
                     setOtpError('Invalid code. Please try again.');
                   }
-                }}>
+                }}
+              >
                 Verify &amp; Show
               </button>
             </div>

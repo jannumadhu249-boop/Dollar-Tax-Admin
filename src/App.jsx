@@ -22,6 +22,7 @@ import Leads from './components/Leads';
 import SendMail from './components/SendMail';
 import Mailgun from './components/Mailgun';
 import PaperFiling from './components/PaperFiling';
+import PaperFilingDone from './components/PaperFilingDone';
 import EFilingView from './components/EFilingView';
 import ReferralsReport from './components/ReferralsReport';
 import PaymentsReport from './components/PaymentsReport';
@@ -103,7 +104,7 @@ export default function App() {
         return <PaperFiling mode="pending" />;
       }
       if (selectedStatus === 'paper-filing-accepted-complete') {
-        return <PaperFiling mode="done" />;
+        return <PaperFilingDone />;
       }
       // E-Filing views
       const eFilingKeys = [

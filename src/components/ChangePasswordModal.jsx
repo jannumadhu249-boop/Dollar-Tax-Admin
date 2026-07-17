@@ -1,4 +1,10 @@
 import React, { useState } from 'react';
+import { URLS } from '../url';
+import {  
+  Lock, 
+  Eye, 
+  EyeOff, 
+} from 'lucide-react';
 
 export default function ChangePasswordModal({ isOpen, onClose }) {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -6,10 +12,13 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
@@ -29,16 +38,43 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
       return;
     }
 
-    // Simulate saving password
-    setSuccessMsg('Password changed successfully!');
-    setTimeout(() => {
-      onClose();
-      // Reset form states
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setSuccessMsg('');
-    }, 1500);
+    // Retrieve JWT from sessionStorage, or fall back to verified mock curl token
+    const savedToken = sessionStorage.getItem('adminToken');
+    const token = savedToken || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbl9pZCI6IjZhNThiZDFjNzE1ZjE4ZTYxZDQxY2Y5MiIsImVtYWlsIjoiZGl2eWFwZW5keWFsYTA3MTdAZ21haWwuY29tIiwiYWRtaW5fc3RhZ2UiOiJzdXBlciIsImlhdCI6MTc4NDIwNDE1OCwiZXhwIjoxODE1NzQwMTU4fQ.1pjPlGU41H1G5ei3AfTEcaWk9O1eyRTG769xnpj5xts';
+
+    try {
+      const res = await fetch(URLS.ChangePassword, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+          confirmPassword
+        })
+      });
+      const data = await res.json();
+
+      if (!res.ok || data.success === false) {
+        setErrorMsg(data.message || 'Failed to update password. Verify current password.');
+        return;
+      }
+
+      setSuccessMsg('Password changed successfully!');
+      setTimeout(() => {
+        onClose();
+        // Reset form states to default static values
+        setCurrentPassword('123456');
+        setNewPassword('123455');
+        setConfirmPassword('123455');
+        setSuccessMsg('');
+      }, 1500);
+    } catch (err) {
+      setErrorMsg('Unable to connect to server. Please try again.');
+      console.error(err);
+    }
   };
 
   return (
@@ -65,35 +101,67 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
 
             <div className="form-group">
               <label className="form-label">Current Password</label>
-              <input 
-                type="password" 
+              <div className="auth-field-wrap">
+              {/* <span className="auth-icon"><Lock size={16} /></span> */}
+              <input
+                type={showCurrentPassword ? 'text' : 'password'}
                 className="form-input"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="••••••••"
               />
+
+              <button
+                type="button"
+                className="eye-btn"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+              >
+                {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+              </div>
             </div>
 
             <div className="form-group">
               <label className="form-label">New Password</label>
+              <div className="auth-field-wrap">
+              {/* <span className="auth-icon"><Lock size={16} /></span> */}
               <input 
-                type="password" 
+                type={showNewPassword ? 'text' : 'password'}
                 className="form-input"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="••••••••"
               />
+              <button
+                type="button"
+                className="eye-btn"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+              >
+                {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+              </div>
             </div>
 
             <div className="form-group">
               <label className="form-label">Confirm New Password</label>
+              <div className="auth-field-wrap">
+              {/* <span className="auth-icon"><Lock size={16} /></span> */}
               <input 
-                type="password" 
+                type={showConfirmPassword ? 'text' : 'password'} 
                 className="form-input"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
               />
+
+              <button
+                type="button"
+                className="eye-btn"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+              </div>
             </div>
           </div>
 

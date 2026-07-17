@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Key, LogOut, ChevronDown } from 'lucide-react';
-import logoLg from '../assets/logo-lg.png';
+import logoLg from '../assets/logo-white.png';
 
 export default function Navbar({
   activeTab,

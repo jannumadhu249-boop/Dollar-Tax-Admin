@@ -1,197 +1,361 @@
-import React, { useState } from 'react';
-import logoLg from '../assets/logo-lg.png';
+import React, { useState, useRef } from 'react';
+import { 
+  User, 
+  Lock, 
+  Eye, 
+  EyeOff, 
+  ShieldCheck 
+} from 'lucide-react';
+import logoLg from '../assets/logo-login.png';
+import ForgotPassword from './ForgotPassword';
+import { URLS } from '../url';
 
 export default function Login({ onLoginSuccess }) {
+  // Tab states: 'login' or 'forgot'
+  const [activeTab, setActiveTab] = useState('login');
+
+  // Login form states
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [otpInput, setOtpInput] = useState('');
-  const [generatedOtp, setGeneratedOtp] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Login OTP Modal states
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [loginOtpDigits, setLoginOtpDigits] = useState(['', '', '', '', '', '']);
+  const loginOtpRefs = useRef([]);
+
+  // Alert/Message states
   const [errorMsg, setErrorMsg] = useState('');
   const [infoMsg, setInfoMsg] = useState('');
-  const [activeTab, setActiveTab] = useState('login'); // 'login' or 'forgot'
+  const [otpError, setOtpError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
-  const handleGenerateOtp = (e) => {
-    e.preventDefault();
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedOtp(code);
-    setInfoMsg(`Generated OTP Code: ${code}`);
-    setErrorMsg('');
+  // OTP focus helpers
+  const handleDigitChange = (idx, value) => {
+    const val = value.replace(/\D/g, '').slice(-1);
+    const next = [...loginOtpDigits];
+    next[idx] = val;
+    setLoginOtpDigits(next);
+    if (val && idx < 5) {
+      loginOtpRefs.current[idx + 1]?.focus();
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleDigitKeyDown = (idx, e) => {
+    if (e.key === 'Backspace' && !loginOtpDigits[idx] && idx > 0) {
+      loginOtpRefs.current[idx - 1]?.focus();
+    }
+  };
+
+  const handleDigitPaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    const next = [...loginOtpDigits];
+    pastedData.split('').forEach((char, i) => {
+      next[i] = char;
+    });
+    setLoginOtpDigits(next);
+    loginOtpRefs.current[Math.min(pastedData.length, 5)]?.focus();
+  };
+
+  // Submit Login credentials -> Show OTP Modal
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
-
-    if (activeTab === 'forgot') {
-      setInfoMsg('Password reset link has been simulated to your email.');
-      return;
-    }
+    setInfoMsg('');
 
     if (!username || !password) {
       setErrorMsg('Username/Email and Password are required.');
       return;
     }
 
-    if (!generatedOtp) {
-      setErrorMsg('Please click "Generate Otp" first.');
-      return;
-    }
+    setIsLoggingIn(true);
+    try {
+      const res = await fetch(URLS.Login, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: username, adm_pswd: password })
+      });
+      
+      let data = {};
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        setErrorMsg(text || `Login request failed with status: ${res.status}`);
+        return;
+      }
+      
+      if (!res.ok || data.success === false) {
+        setErrorMsg(data.message || 'Login failed. Please verify credentials.');
+        return;
+      }
 
-    if (otpInput !== generatedOtp) {
-      setErrorMsg('Incorrect OTP code. Please try again.');
-      return;
+      setLoginOtpDigits(['', '', '', '', '', '']);
+      setShowOtpModal(true);
+      setOtpError('');
+    } catch (err) {
+      setErrorMsg('Unable to connect to login server. Please try again.');
+      console.error(err);
+    } finally {
+      setIsLoggingIn(false);
     }
-
-    // Success
-    setInfoMsg('Login successful! Redirecting...');
-    setTimeout(() => {
-      onLoginSuccess();
-    }, 800);
   };
 
-  const handleCancel = () => {
-    setUsername('');
-    setPassword('');
-    setOtpInput('');
-    setGeneratedOtp('');
+  // Verify Login OTP
+  const handleVerifyLoginOtp = async (e) => {
+    e.preventDefault();
     setErrorMsg('');
-    setInfoMsg('');
+    setOtpError('');
+    const enteredCode = loginOtpDigits.join('');
+
+    if (enteredCode.length < 6) {
+      setErrorMsg('Please enter the complete 6-digit code.');
+      return;
+    }
+
+    setIsVerifyingOtp(true);
+    try {
+      const res = await fetch(URLS.LoginVerification, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: username, otp: enteredCode })
+      });
+
+      let data = {};
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        setErrorMsg(text || `Verification request failed with status: ${res.status}`);
+        return;
+      }
+
+      if (!res.ok || data.success === false) {
+        setOtpError(data.message || 'Incorrect verification code. Please try again.');
+        return;
+      }
+
+      // Save token for authenticated requests
+      const token = data.token || data.data?.token;
+      if (token) {
+        sessionStorage.setItem('adminToken', token);
+      }
+
+      setShowOtpModal(false);
+      setInfoMsg('Authentication verified. Redirecting to dashboard...');
+      setTimeout(() => {
+        onLoginSuccess();
+      }, 800);
+    } catch (err) {
+      setOtpError('Unable to connect to verification server. Please try again.');
+      console.error(err);
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
+  const handleForgotPasswordSuccess = (msg) => {
+    setInfoMsg(msg);
+    setActiveTab('login');
   };
 
   return (
     <div className="login-wrapper">
-      {/* Upper Logo Banner */}
+      {/* Upper Logo Banner (Logo placement unchanged) */}
       <div className="login-logo-container">
         <div className="login-logo-box">
-            <img
-              src={logoLg}
-              alt="Dollar Tax Filer"
-              style={{
-                height: "60px",
-                width: "auto",
-                objectFit: "contain",
-              }}
-            />
+          <img
+            src={logoLg}
+            alt="Dollar Tax Filer"
+            style={{
+              height: '60px',
+              width: 'auto',
+              objectFit: 'contain',
+            }}
+          />
         </div>
         <h2 className="login-welcome-text">Welcome to Admin Login</h2>
       </div>
 
       {/* Main Login Card */}
-      <div className="login-card">
-        {/* Tab Buttons */}
-        <div className="login-tabs-group">
-          <button 
-            type="button" 
-            className={`login-tab-btn ${activeTab === 'login' ? 'active' : ''}`}
-            onClick={() => {
+      <div className="login-card" style={{ padding: '32px' }}>
+        {errorMsg && (
+          <div className="login-message error" style={{ marginBottom: '16px' }}>
+            {errorMsg}
+          </div>
+        )}
+
+        {infoMsg && (
+          <div className="login-message info" style={{ marginBottom: '16px' }}>
+            {infoMsg}
+          </div>
+        )}
+
+        {/* ── LOGIN TAB ── */}
+        {activeTab === 'login' && (
+          <form onSubmit={handleLoginSubmit} className="login-form-body">
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 4px 0', color: '#1e293b' }}>
+              Sign In
+            </h3>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 16px 0' }}>
+              Enter username and password to proceed
+            </p>
+
+            {/* Username/Email Input */}
+            <div className="login-form-group">
+              <label className="login-label">Email</label>
+              <div className="auth-field-wrap">
+                <span className="auth-icon"><User size={16} /></span>
+                <input 
+                  type="text" 
+                  className="login-input-adv" 
+                  placeholder="Ente Email"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  disabled={isLoggingIn}
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Password Input */}
+            <div className="login-form-group">
+              <label className="login-label">Password</label>
+              <div className="auth-field-wrap">
+                <span className="auth-icon"><Lock size={16} /></span>
+                <input 
+                  type={showPassword ? 'text' : 'password'}
+                  className="login-input-adv" 
+                  placeholder="Enter Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{ paddingRight: '44px' }}
+                  disabled={isLoggingIn}
+                  required
+                />
+                <button
+                  type="button"
+                  className="eye-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Forgot Password Right Aligned Link Above Login Button */}
+            <div className="forgot-password-container">
+              <button
+                type="button"
+                className="forgot-password-link-btn"
+                onClick={() => {
+                  setActiveTab('forgot');
+                  setErrorMsg('');
+                  setInfoMsg('');
+                }}
+              >
+                Forgot Password?
+              </button>
+            </div>
+
+            {/* Login Submit Button */}
+            <button type="submit" className="otp-btn-verify" style={{ marginTop: '4px' }} disabled={isLoggingIn}>
+              {isLoggingIn ? (
+                <>
+                  <span className="auth-btn-spinner" aria-hidden="true" />
+                  Signing in...
+                </>
+              ) : (
+                'Login'
+              )}
+            </button>
+          </form>
+        )}
+
+        {/* ── FORGOT PASSWORD VIEW (Delegated to external component) ── */}
+        {activeTab === 'forgot' && (
+          <ForgotPassword 
+            onCancel={() => {
               setActiveTab('login');
               setErrorMsg('');
               setInfoMsg('');
             }}
-          >
-            Login
-          </button>
-          <button 
-            type="button" 
-            className={`login-tab-btn ${activeTab === 'forgot' ? 'active' : ''}`}
-            onClick={() => {
-              setActiveTab('forgot');
-              setErrorMsg('');
-              setInfoMsg('');
-            }}
-          >
-            Forgot Password ?
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="login-form-body">
-          {errorMsg && (
-            <div className="login-message error">
-              {errorMsg}
-            </div>
-          )}
-
-          {infoMsg && (
-            <div className="login-message info">
-              {infoMsg}
-            </div>
-          )}
-
-          {activeTab === 'login' ? (
-            <>
-              {/* Username Input */}
-              <div className="login-form-group">
-                <label className="login-label">User name/Email</label>
-                <input 
-                  type="text" 
-                  className="login-input" 
-                  placeholder="Enter Username or Email"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                />
-              </div>
-
-              {/* Password Input */}
-              <div className="login-form-group">
-                <label className="login-label">Password</label>
-                <input 
-                  type="password" 
-                  className="login-input" 
-                  placeholder="Enter Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-
-              {/* OTP Input */}
-              <div className="login-form-group">
-                <div className="otp-label-row">
-                  <label className="login-label">Otp</label>
-                  <button 
-                    type="button" 
-                    className="generate-otp-btn"
-                    onClick={handleGenerateOtp}
-                  >
-                    Generate Otp
-                  </button>
-                </div>
-                <input 
-                  type="text" 
-                  className="login-input" 
-                  placeholder="Enter Otp"
-                  value={otpInput}
-                  onChange={(e) => setOtpInput(e.target.value)}
-                  required
-                />
-              </div>
-            </>
-          ) : (
-            <div className="login-form-group">
-              <label className="login-label">Registered Email</label>
-              <input 
-                type="email" 
-                className="login-input" 
-                placeholder="Enter Registered Email"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
-            </div>
-          )}
-
-          {/* Form Actions */}
-          <div className="login-actions-row">
-            <button type="submit" className="login-action-btn submit">
-              Submit
-            </button>
-            <button type="button" className="login-action-btn cancel" onClick={handleCancel}>
-              Cancel
-            </button>
-          </div>
-        </form>
+            onSuccess={handleForgotPasswordSuccess}
+          />
+        )}
       </div>
+
+      {/* ── OTP VERIFICATION DIALOG (Modal overlay on Login click) ── */}
+      {showOtpModal && (
+        <div className="otp-modal-overlay">
+          <div className="otp-modal-card">
+            <div className="otp-icon-wrap">
+              <ShieldCheck size={32} />
+            </div>
+
+            <h3 className="otp-modal-title">Enter Verification Code</h3>
+            <p className="otp-modal-desc">
+              A 6-digit verification code has been sent to your email. Please enter it below to sign in.
+            </p>
+
+            <form onSubmit={handleVerifyLoginOtp}>
+            {/* OTP error displayed here */}
+              {otpError && (
+                <div className="login-message error" style={{ marginBottom: '12px', textAlign: 'center' }}>
+                  {otpError}
+                </div>
+              )}
+              <div className="otp-digit-row" onPaste={handleDigitPaste}>
+                {loginOtpDigits.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={(el) => (loginOtpRefs.current[i] = el)}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    className={`otp-digit-box ${digit ? 'filled' : ''}`}
+                    value={digit}
+                    onChange={(e) => handleDigitChange(i, e.target.value)}
+                    onKeyDown={(e) => handleDigitKeyDown(i, e)}
+                    required
+                  />
+                ))}
+              </div>
+
+              <div className="otp-modal-actions">
+                <button type="submit" className="otp-btn-verify" disabled={isVerifyingOtp}>
+                  {isVerifyingOtp ? (
+                    <>
+                      <span className="auth-btn-spinner" aria-hidden="true" />
+                      Verifying...
+                    </>
+                  ) : (
+                    'Verify & Sign In'
+                  )}
+                </button>
+                <button type="button" className="otp-btn-verify">
+                  Resend Otp
+                </button>
+                <button 
+                  type="button" 
+                  className="otp-btn-cancel" 
+                  onClick={() => {
+                    setShowOtpModal(false);
+                    setOtpError('');
+                    setErrorMsg('');
+                  }}
+                >
+                  Go Back
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
