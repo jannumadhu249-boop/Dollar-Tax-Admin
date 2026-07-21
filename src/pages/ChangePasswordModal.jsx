@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { URLS } from '../url';
+import AuthAlert from './AuthAlert';
 import {  
   Lock, 
   Eye, 
@@ -15,6 +16,7 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   if (!isOpen) return null;
 
@@ -42,6 +44,7 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
     const savedToken = sessionStorage.getItem('adminToken');
     const token = savedToken || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbl9pZCI6IjZhNThiZDFjNzE1ZjE4ZTYxZDQxY2Y5MiIsImVtYWlsIjoiZGl2eWFwZW5keWFsYTA3MTdAZ21haWwuY29tIiwiYWRtaW5fc3RhZ2UiOiJzdXBlciIsImlhdCI6MTc4NDIwNDE1OCwiZXhwIjoxODE1NzQwMTU4fQ.1pjPlGU41H1G5ei3AfTEcaWk9O1eyRTG769xnpj5xts';
 
+    setIsUpdating(true);
     try {
       const res = await fetch(URLS.ChangePassword, {
         method: 'POST',
@@ -74,6 +77,8 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
     } catch (err) {
       setErrorMsg('Unable to connect to server. Please try again.');
       console.error(err);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -88,15 +93,15 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
             {errorMsg && (
-              <div className="login-message error" style={{ marginBottom: '16px' }}>
-                {errorMsg}
-              </div>
+              <AuthAlert
+                type={errorMsg.includes('required') || errorMsg.includes('match') || errorMsg.includes('at least') ? 'warning' : 'error'}
+                title={errorMsg.includes('required') || errorMsg.includes('match') || errorMsg.includes('at least') ? 'Check your input' : 'Update failed'}
+                message={errorMsg}
+              />
             )}
             
             {successMsg && (
-              <div className="login-message info" style={{ marginBottom: '16px', textAlign: 'center' }}>
-                {successMsg}
-              </div>
+              <AuthAlert type="success" title="Password updated" message={successMsg} centered />
             )}
 
             <div className="form-group">
@@ -109,6 +114,7 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="••••••••"
+                disabled={isUpdating}
               />
 
               <button
@@ -131,6 +137,7 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="••••••••"
+                disabled={isUpdating}
               />
               <button
                 type="button"
@@ -152,6 +159,7 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
+                disabled={isUpdating}
               />
 
               <button
@@ -166,11 +174,11 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
           </div>
 
           <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
+            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isUpdating}>
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary">
-              Update Password
+            <button type="submit" className="btn btn-primary" disabled={isUpdating}>
+              {isUpdating ? 'Updating...' : 'Update Password'}
             </button>
           </div>
         </form>

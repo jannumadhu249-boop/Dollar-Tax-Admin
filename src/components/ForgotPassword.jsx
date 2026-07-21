@@ -1,16 +1,26 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Mail, 
   Lock, 
   Eye, 
   EyeOff, 
   ArrowLeft, 
-  Send 
+  Send,
+  Clock
 } from 'lucide-react';
-import './ForgotPassword.css';
+import '../styles/ForgotPassword.css';
+import AuthAlert from '../pages/AuthAlert';
 import { URLS } from '../url';
 
 const EMAIL_NOT_FOUND_MESSAGE = "We couldn't find an account associated with this email address";
+const OTP_VALIDITY_SECONDS = 300;
+const RESEND_COOLDOWN_SECONDS = 60;
+
+const formatTime = (seconds) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+};
 
 const getForgotEmailErrorMessage = (data, status) => {
   const message = (data?.message || '').toLowerCase();
@@ -27,8 +37,26 @@ const getForgotEmailErrorMessage = (data, status) => {
   return data?.message || 'Failed to generate password recovery OTP.';
 };
 
+const getAlertMeta = (message) => {
+  if (message === EMAIL_NOT_FOUND_MESSAGE) {
+    return { type: 'warning', title: 'Account not found' };
+  }
+  if (message.includes('complete 6-digit') || message.includes('required') || message.includes('match') || message.includes('at least')) {
+    return { type: 'warning', title: 'Check your input' };
+  }
+  if (message.includes('expired')) {
+    return { type: 'warning', title: 'Code expired' };
+  }
+  if (message.includes('Incorrect verification')) {
+    return { type: 'error', title: 'Invalid code' };
+  }
+  if (message.includes('Unable to connect')) {
+    return { type: 'error', title: 'Connection error' };
+  }
+  return { type: 'error', title: 'Unable to proceed' };
+};
+
 export default function ForgotPassword({ onCancel, onSuccess }) {
-  // Steps: 'email', 'otp', 'reset'
   const [forgotStep, setForgotStep] = useState('email');
   const [forgotEmail, setForgotEmail] = useState('');
   const [userId, setUserId] = useState('');
@@ -40,8 +68,41 @@ export default function ForgotPassword({ onCancel, onSuccess }) {
   const forgotOtpRefs = useRef([]);
 
   const [errorMsg, setErrorMsg] = useState('');
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [isResendingOtp, setIsResendingOtp] = useState(false);
+  const [otpTimeLeft, setOtpTimeLeft] = useState(OTP_VALIDITY_SECONDS);
+  const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN_SECONDS);
+  const [otpSessionKey, setOtpSessionKey] = useState(0);
 
-  // OTP focus helpers
+  const isOtpExpired = forgotStep === 'otp' && otpTimeLeft === 0;
+  const isFormBusy = isSendingOtp || isVerifyingOtp || isUpdatingPassword || isResendingOtp;
+
+  useEffect(() => {
+    if (forgotStep !== 'otp') return undefined;
+
+    setOtpTimeLeft(OTP_VALIDITY_SECONDS);
+    setResendCooldown(RESEND_COOLDOWN_SECONDS);
+
+    const interval = setInterval(() => {
+      setOtpTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [forgotStep, otpSessionKey]);
+
+  useEffect(() => {
+    if (isOtpExpired && !errorMsg) {
+      setErrorMsg('Verification code has expired. Please request a new one.');
+    }
+  }, [isOtpExpired, errorMsg]);
+
+  const resetOtpTimer = () => {
+    setOtpSessionKey((prev) => prev + 1);
+  };
+
   const handleDigitChange = (idx, value) => {
     const val = value.replace(/\D/g, '').slice(-1);
     const next = [...forgotOtpDigits];
@@ -69,7 +130,42 @@ export default function ForgotPassword({ onCancel, onSuccess }) {
     forgotOtpRefs.current[Math.min(pastedData.length, 5)]?.focus();
   };
 
-  // Send Forgot Password OTP
+  const requestForgotOtp = async ({ isResend = false } = {}) => {
+    const res = await fetch(URLS.GenerateOtp, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: forgotEmail })
+    });
+
+    let data = {};
+    const contentType = res.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      data = await res.json();
+    } else {
+      const text = await res.text();
+      throw new Error(text || `Request failed with status: ${res.status}`);
+    }
+
+    if (!res.ok || data.success === false) {
+      throw new Error(getForgotEmailErrorMessage(data, res.status));
+    }
+
+    const uId = data.userId || data.data?.userId || data.data?._id;
+    if (!uId) {
+      throw new Error(EMAIL_NOT_FOUND_MESSAGE);
+    }
+
+    setUserId(uId);
+    setForgotOtpDigits(['', '', '', '', '', '']);
+    setForgotStep('otp');
+    resetOtpTimer();
+
+    if (isResend) {
+      setErrorMsg('');
+      forgotOtpRefs.current[0]?.focus();
+    }
+  };
+
   const handleSendForgotOtp = async (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -79,57 +175,48 @@ export default function ForgotPassword({ onCancel, onSuccess }) {
       return;
     }
 
+    setIsSendingOtp(true);
     try {
-      const res = await fetch(URLS.GenerateOtp, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail })
-      });
-
-      let data = {};
-      const contentType = res.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        data = await res.json();
-      } else {
-        const text = await res.text();
-        setErrorMsg(text || `Request failed with status: ${res.status}`);
-        return;
-      }
-
-      if (!res.ok || data.success === false) {
-        setErrorMsg(getForgotEmailErrorMessage(data, res.status));
-        return;
-      }
-
-      // Save user ID from response
-      const uId = data.userId || data.data?.userId || data.data?._id;
-
-      if (!uId) {
-        setErrorMsg(EMAIL_NOT_FOUND_MESSAGE);
-        return;
-      }
-
-      setUserId(uId);
-      setForgotOtpDigits(['', '', '', '', '', '']);
-      setForgotStep('otp');
+      await requestForgotOtp();
     } catch (err) {
-      setErrorMsg('Unable to connect to recovery server. Please try again.');
+      setErrorMsg(err.message || 'Unable to connect to recovery server. Please try again.');
       console.error(err);
+    } finally {
+      setIsSendingOtp(false);
     }
   };
 
+  const handleResendForgotOtp = async () => {
+    if (resendCooldown > 0 || isResendingOtp || isFormBusy) return;
 
-  // Verify Forgot Password OTP
+    setErrorMsg('');
+    setIsResendingOtp(true);
+    try {
+      await requestForgotOtp({ isResend: true });
+    } catch (err) {
+      setErrorMsg(err.message || 'Unable to resend verification code. Please try again.');
+      console.error(err);
+    } finally {
+      setIsResendingOtp(false);
+    }
+  };
+
   const handleVerifyForgotOtp = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     const enteredCode = forgotOtpDigits.join('');
+
+    if (isOtpExpired) {
+      setErrorMsg('Verification code has expired. Please request a new one.');
+      return;
+    }
 
     if (enteredCode.length < 6) {
       setErrorMsg('Please enter the complete 6-digit code.');
       return;
     }
 
+    setIsVerifyingOtp(true);
     try {
       const res = await fetch(URLS.VerifyOtp, {
         method: 'POST',
@@ -144,13 +231,15 @@ export default function ForgotPassword({ onCancel, onSuccess }) {
       }
 
       setForgotStep('reset');
+      setErrorMsg('');
     } catch (err) {
       setErrorMsg('Unable to connect to verification server. Please try again.');
       console.error(err);
+    } finally {
+      setIsVerifyingOtp(false);
     }
   };
 
-  // Save new Password
   const handleUpdatePasswordSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -165,6 +254,7 @@ export default function ForgotPassword({ onCancel, onSuccess }) {
       return;
     }
 
+    setIsUpdatingPassword(true);
     try {
       const res = await fetch(URLS.ResetPassword, {
         method: 'POST',
@@ -182,6 +272,8 @@ export default function ForgotPassword({ onCancel, onSuccess }) {
     } catch (err) {
       setErrorMsg('Unable to connect to password server. Please try again.');
       console.error(err);
+    } finally {
+      setIsUpdatingPassword(false);
     }
   };
 
@@ -193,8 +285,12 @@ export default function ForgotPassword({ onCancel, onSuccess }) {
     setConfirmPassword('');
     setForgotOtpDigits(['', '', '', '', '', '']);
     setErrorMsg('');
+    setOtpTimeLeft(OTP_VALIDITY_SECONDS);
+    setResendCooldown(RESEND_COOLDOWN_SECONDS);
     onCancel();
   };
+
+  const alertMeta = errorMsg ? getAlertMeta(errorMsg) : null;
 
   return (
     <div className="login-form-body">
@@ -202,7 +298,8 @@ export default function ForgotPassword({ onCancel, onSuccess }) {
         <button 
           type="button" 
           onClick={handleCancelForgot}
-          style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px' }}
+          disabled={isFormBusy}
+          style={{ background: 'none', border: 'none', color: '#64748b', cursor: isFormBusy ? 'not-allowed' : 'pointer', padding: '4px', opacity: isFormBusy ? 0.5 : 1 }}
         >
           <ArrowLeft size={18} />
         </button>
@@ -212,12 +309,13 @@ export default function ForgotPassword({ onCancel, onSuccess }) {
       </div>
 
       {errorMsg && (
-        <div className="login-message error" style={{ marginBottom: '16px' }}>
-          {errorMsg}
-        </div>
+        <AuthAlert
+          type={alertMeta.type}
+          title={alertMeta.title}
+          message={errorMsg}
+        />
       )}
 
-      {/* Step Indicators */}
       <div className="forgot-step-indicator">
         <div className={`forgot-step-dot ${forgotStep === 'email' ? 'active' : ''} ${forgotStep !== 'email' ? 'done' : ''}`}>
           {forgotStep !== 'email' ? '✓' : '1'}
@@ -232,7 +330,6 @@ export default function ForgotPassword({ onCancel, onSuccess }) {
         </div>
       </div>
 
-      {/* STEP 1: Enter Email */}
       {forgotStep === 'email' && (
         <form onSubmit={handleSendForgotOtp} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 4px 0', lineHeight: 1.4 }}>
@@ -248,22 +345,59 @@ export default function ForgotPassword({ onCancel, onSuccess }) {
                 placeholder="admin@example.com"
                 value={forgotEmail}
                 onChange={(e) => setForgotEmail(e.target.value)}
+                disabled={isSendingOtp}
                 required
               />
             </div>
           </div>
-          <button type="submit" className="forgot-btn-primary" style={{ gap: '8px' }}>
-            <Send size={15} /> Send OTP code
+          <button type="submit" className="forgot-btn-primary" style={{ gap: '8px' }} disabled={isSendingOtp}>
+            {isSendingOtp ? (
+              <>
+                <span className="auth-btn-spinner" aria-hidden="true" />
+                Sending OTP...
+              </>
+            ) : (
+              <>
+                <Send size={15} /> Send OTP code
+              </>
+            )}
           </button>
         </form>
       )}
 
-      {/* STEP 2: Enter Forgot Password OTP */}
       {forgotStep === 'otp' && (
         <form onSubmit={handleVerifyForgotOtp} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 4px 0', lineHeight: 1.4 }}>
             Enter the verification code sent to <strong style={{ color: '#0076a3' }}>{forgotEmail}</strong>
           </p>
+
+          <div className="forgot-otp-timer-wrap">
+            <div className={`forgot-otp-timer${isOtpExpired ? ' expired' : ''}`}>
+              <Clock size={14} />
+              {isOtpExpired ? (
+                <span>Code expired — request a new one below</span>
+              ) : (
+                <>
+                  <span>Code expires in</span>
+                  <strong>{formatTime(otpTimeLeft)}</strong>
+                </>
+              )}
+            </div>
+            <button
+              type="button"
+              className="forgot-resend-btn"
+              onClick={handleResendForgotOtp}
+              disabled={resendCooldown > 0 || isResendingOtp || isFormBusy}
+            >
+              {isResendingOtp ? (
+                'Sending new code...'
+              ) : resendCooldown > 0 ? (
+                `Resend code in ${resendCooldown}s`
+              ) : (
+                'Resend verification code'
+              )}
+            </button>
+          </div>
 
           <div className="login-form-group">
             <label className="login-label" style={{ textAlign: 'center', marginBottom: '8px' }}>6-Digit Verification Code</label>
@@ -279,22 +413,26 @@ export default function ForgotPassword({ onCancel, onSuccess }) {
                   value={digit}
                   onChange={(e) => handleDigitChange(i, e.target.value)}
                   onKeyDown={(e) => handleDigitKeyDown(i, e)}
+                  disabled={isOtpExpired || isFormBusy}
                   required
                 />
               ))}
             </div>
           </div>
 
-          <button type="submit" className="forgot-btn-primary">
-            Verify OTP
-          </button>
-          <button type="button" className="otp-btn-verify">
-            Resend Otp
+          <button type="submit" className="forgot-btn-primary" disabled={isOtpExpired || isVerifyingOtp || isFormBusy}>
+            {isVerifyingOtp ? (
+              <>
+                <span className="auth-btn-spinner" aria-hidden="true" />
+                Verifying...
+              </>
+            ) : (
+              'Verify OTP'
+            )}
           </button>
         </form>
       )}
 
-      {/* STEP 3: Reset Password */}
       {forgotStep === 'reset' && (
         <form onSubmit={handleUpdatePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 4px 0', lineHeight: 1.4 }}>
@@ -312,12 +450,14 @@ export default function ForgotPassword({ onCancel, onSuccess }) {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 style={{ paddingRight: '44px' }}
+                disabled={isUpdatingPassword}
                 required
               />
               <button
                 type="button"
                 className="eye-btn"
                 onClick={() => setShowNewPassword(!showNewPassword)}
+                disabled={isUpdatingPassword}
               >
                 {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -335,20 +475,29 @@ export default function ForgotPassword({ onCancel, onSuccess }) {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 style={{ paddingRight: '44px' }}
+                disabled={isUpdatingPassword}
                 required
               />
               <button
                 type="button"
                 className="eye-btn"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                disabled={isUpdatingPassword}
               >
                 {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
           </div>
 
-          <button type="submit" className="forgot-btn-primary">
-            Update Password
+          <button type="submit" className="forgot-btn-primary" disabled={isUpdatingPassword}>
+            {isUpdatingPassword ? (
+              <>
+                <span className="auth-btn-spinner" aria-hidden="true" />
+                Updating password...
+              </>
+            ) : (
+              'Update Password'
+            )}
           </button>
         </form>
       )}

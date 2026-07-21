@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import AuthAlert from './AuthAlert';
 
 export default function SendMail({ selectedYear = 'TY2025' }) {
   const [status, setStatus] = useState('Select Status');
@@ -53,16 +54,11 @@ export default function SendMail({ selectedYear = 'TY2025' }) {
       </div>
 
       {message && (
-        <div 
-          className={`login-message ${message.type}`} 
-          style={{ 
-            marginBottom: '20px', 
-            borderRadius: 'var(--radius-sm)',
-            textAlign: 'left'
-          }}
-        >
-          {message.text}
-        </div>
+        <AuthAlert
+          type={message.type === 'success' ? 'success' : message.type === 'error' ? 'error' : 'info'}
+          title={message.type === 'success' ? 'Email sent' : message.type === 'error' ? 'Cannot send email' : 'Notice'}
+          message={message.text}
+        />
       )}
 
       <form style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '800px' }}>

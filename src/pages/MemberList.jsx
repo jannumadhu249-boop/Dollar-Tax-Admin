@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Eye, Download, Search, Calendar, FileText } from 'lucide-react';
 
-export default function MemberList({ selectedStatus = 'registered-users', selectedYear = 'TY2025' }) {
+export default function MemberList({ selectedStatus = '', selectedYear = 'TY2025' }) {
   const numericYear = selectedYear ? selectedYear.replace('TY', '') : '2025';
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDate, setFilterDate] = useState('');
-  const [activeSubTab, setActiveSubTab] = useState('New'); // 'New' or 'Modified'
+  const [activeSubTab, setActiveSubTab] = useState('New');
   const [selectedMember, setSelectedMember] = useState(null);
   const [activeDetailTab, setActiveDetailTab] = useState('personal');
 
@@ -207,7 +207,7 @@ export default function MemberList({ selectedStatus = 'registered-users', select
     } else if (selectedStatus === 'client-review-paper-filing') {
       matchesStatus = member.status === 'Client Review - Paper Filing';
     } else if (selectedStatus === 'just-uploaded-docs') {
-      matchesStatus = false; // No records currently uploaded
+      matchesStatus = false;
     }
 
     const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

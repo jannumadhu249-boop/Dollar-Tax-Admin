@@ -8,10 +8,12 @@ import {
 } from 'lucide-react';
 import logoLg from '../assets/logo-login.png';
 import ForgotPassword from './ForgotPassword';
+// import Register from './Register';
+import AuthAlert from '../pages/AuthAlert';
 import { URLS } from '../url';
 
 export default function Login({ onLoginSuccess }) {
-  // Tab states: 'login' or 'forgot'
+  // Tab states: 'login', 'forgot', or 'register'
   const [activeTab, setActiveTab] = useState('login');
 
   // Login form states
@@ -164,7 +166,7 @@ export default function Login({ onLoginSuccess }) {
   };
 
   return (
-    <div className="login-wrapper">
+    <div className="login-wrapper" style={{ backgroundImage: 'url("../src/assets/map-background.png")' }}>
       {/* Upper Logo Banner (Logo placement unchanged) */}
       <div className="login-logo-container">
         <div className="login-logo-box">
@@ -184,15 +186,15 @@ export default function Login({ onLoginSuccess }) {
       {/* Main Login Card */}
       <div className="login-card" style={{ padding: '32px' }}>
         {errorMsg && (
-          <div className="login-message error" style={{ marginBottom: '16px' }}>
-            {errorMsg}
-          </div>
+          <AuthAlert
+            type={errorMsg.includes('required') ? 'warning' : 'error'}
+            title={errorMsg.includes('required') ? 'Missing information' : 'Login failed'}
+            message={errorMsg}
+          />
         )}
 
         {infoMsg && (
-          <div className="login-message info" style={{ marginBottom: '16px' }}>
-            {infoMsg}
-          </div>
+          <AuthAlert type="success" title="Authenticated" message={infoMsg} centered />
         )}
 
         {/* ── LOGIN TAB ── */}
@@ -248,7 +250,18 @@ export default function Login({ onLoginSuccess }) {
             </div>
 
             {/* Forgot Password Right Aligned Link Above Login Button */}
-            <div className="forgot-password-container">
+            <div className="forgot-password-container" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+              {/* <button
+                type="button"
+                className="forgot-password-link-btn"
+                onClick={() => {
+                  setActiveTab('register');
+                  setErrorMsg('');
+                  setInfoMsg('');
+                }}
+              >
+                Create Account
+              </button> */}
               <button
                 type="button"
                 className="forgot-password-link-btn"
@@ -287,6 +300,20 @@ export default function Login({ onLoginSuccess }) {
             onSuccess={handleForgotPasswordSuccess}
           />
         )}
+
+        {activeTab === 'register' && (
+          <Register
+            onCancel={() => {
+              setActiveTab('login');
+              setErrorMsg('');
+              setInfoMsg('');
+            }}
+            onSuccess={(msg) => {
+              setInfoMsg(msg);
+              setActiveTab('login');
+            }}
+          />
+        )}
       </div>
 
       {/* ── OTP VERIFICATION DIALOG (Modal overlay on Login click) ── */}
@@ -305,9 +332,12 @@ export default function Login({ onLoginSuccess }) {
             <form onSubmit={handleVerifyLoginOtp}>
             {/* OTP error displayed here */}
               {otpError && (
-                <div className="login-message error" style={{ marginBottom: '12px', textAlign: 'center' }}>
-                  {otpError}
-                </div>
+                <AuthAlert
+                  type="error"
+                  title="Verification failed"
+                  message={otpError}
+                  centered
+                />
               )}
               <div className="otp-digit-row" onPaste={handleDigitPaste}>
                 {loginOtpDigits.map((digit, i) => (

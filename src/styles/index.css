@@ -696,7 +696,7 @@ body {
 .login-logo-box {
   /* background-color: #ffffff; */
   padding: 12px 28px;
-  border: 1px solid var(--border-light);
+  /* border: 1px solid var(--border-light); */
   border-radius: var(--radius-sm);
   /* box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04); */
   display: inline-block;
@@ -894,12 +894,123 @@ body {
   border-color: rgba(220, 53, 69, 0.2);
 }
 
-.login-message.info {
+.login-message.info,
+.login-message.success {
   background-color: rgba(0, 118, 163, 0.1);
   color: #0076a3;
   border-color: rgba(0, 118, 163, 0.2);
   font-weight: 600;
   text-align: center;
+}
+
+/* Advanced auth alerts */
+.auth-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid;
+  margin-bottom: 16px;
+  animation: authAlertSlideIn 0.28s ease-out;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+.auth-alert-centered {
+  text-align: center;
+  flex-direction: column;
+  align-items: center;
+}
+
+.auth-alert-centered .auth-alert-body {
+  align-items: center;
+}
+
+.auth-alert-icon-wrap {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-alert-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.auth-alert-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.auth-alert-message {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 0.92;
+}
+
+.auth-alert-error {
+  background: linear-gradient(135deg, rgba(254, 242, 242, 0.95) 0%, rgba(254, 226, 226, 0.85) 100%);
+  border-color: rgba(248, 113, 113, 0.35);
+  color: #b91c1c;
+}
+
+.auth-alert-error .auth-alert-icon-wrap {
+  background-color: rgba(220, 38, 38, 0.12);
+  color: #dc2626;
+}
+
+.auth-alert-warning {
+  background: linear-gradient(135deg, rgba(255, 251, 235, 0.95) 0%, rgba(254, 243, 199, 0.85) 100%);
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #b45309;
+}
+
+.auth-alert-warning .auth-alert-icon-wrap {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+}
+
+.auth-alert-info {
+  background: linear-gradient(135deg, rgba(240, 249, 255, 0.95) 0%, rgba(224, 242, 254, 0.85) 100%);
+  border-color: rgba(56, 189, 248, 0.35);
+  color: #0369a1;
+}
+
+.auth-alert-info .auth-alert-icon-wrap {
+  background-color: rgba(0, 118, 163, 0.12);
+  color: #0076a3;
+}
+
+.auth-alert-success {
+  background: linear-gradient(135deg, rgba(240, 253, 244, 0.95) 0%, rgba(220, 252, 231, 0.85) 100%);
+  border-color: rgba(74, 222, 128, 0.35);
+  color: #15803d;
+}
+
+.auth-alert-success .auth-alert-icon-wrap {
+  background-color: rgba(34, 197, 94, 0.12);
+  color: #16a34a;
+}
+
+@keyframes authAlertSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Inline Details Tabbed View styling */
