@@ -218,22 +218,57 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
   const [commentText, setCommentText] = useState('');
   const [commentStatus, setCommentStatus] = useState(member.status);
 
+  // Profile API State
+  const [profileData, setProfileData] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchMemberProfile = async () => {
+      const memberId = member._id || member.sNo;
+      if (!memberId) return;
+      setLoadingProfile(true);
+      try {
+        const token = getAuthToken();
+        const res = await fetch(`${URLS.GetMemberView}${memberId}/profile`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (res.ok) {
+          const result = await res.json();
+          if (isMounted && result.success && result.data) {
+            setProfileData(result.data);
+          }
+        }
+      } catch (err) {
+        console.warn('Member profile fetch warning:', err);
+      } finally {
+        if (isMounted) setLoadingProfile(false);
+      }
+    };
+    fetchMemberProfile();
+    return () => { isMounted = false; };
+  }, [member]);
+
   const details = getMemberDetails(member);
   const history = commentsHistory?.[member.sNo || member._id] || [
     { status: member.status, comments: 'Initial registration processed.', dateTime: member.regDate }
   ];
 
   // SSN / Contact toggles directly without OTP! Email triggers OTP API!
-  const handleToggleField = async (key, isEmail = false) => {
+  const handleToggleField = (key, isEmail = false) => {
     if (unmasked[key]) {
       setUnmasked(prev => ({ ...prev, [key]: false }));
     } else if (isEmail) {
-      // Send OTP via API for Email
-      if (onSendEmailOtp) {
-        await onSendEmailOtp(member._id || member.sNo);
-      }
+      // Open OTP modal immediately without waiting for API call!
       setPendingEmailKey(key);
       setOtpOpen(true);
+      if (onSendEmailOtp) {
+        onSendEmailOtp(member._id || member.sNo);
+      }
     } else {
       // Direct unmasking for SSN & phone (no OTP required!)
       setUnmasked(prev => ({ ...prev, [key]: true }));
@@ -274,10 +309,12 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
 
         {/* Member Quick Info Bar */}
         <div style={{ marginBottom: '12px', padding: '10px 14px', background: '#f8f9fa', borderRadius: '4px', border: '1px solid #e5e7eb', fontSize: '13px' }}>
-          <strong style={{ fontSize: '15px', color: '#0076a3' }}>{member.name}</strong>
-          &nbsp;|&nbsp; File No: <strong>{member.fileNo}</strong>
-          &nbsp;|&nbsp; {member.filingType}
-          &nbsp;|&nbsp; <span style={{ color: statusColor(member.status), fontWeight: 600 }}>{member.status}</span>
+          <strong style={{ fontSize: '15px', color: '#0076a3' }}>
+            {profileData?.header ? `${profileData.header.first_name || ''} ${profileData.header.last_name || ''}`.trim() : member.name}
+          </strong>
+          &nbsp;|&nbsp; File No: <strong>{profileData?.header?.file_no || member.fileNo}</strong>
+          &nbsp;|&nbsp; {profileData?.header?.tin_type || profileData?.header?.file_type || member.filingType}
+          &nbsp;|&nbsp; <span style={{ color: statusColor(profileData?.header?.filestatus || member.status), fontWeight: 600 }}>{profileData?.header?.filestatus || member.status}</span>
         </div>
 
         {/* 10-Tab Ribbon */}
@@ -302,183 +339,271 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
           {/* ── Personal Info ── */}
           {activeTab === 'personal' && (
             <div className="table-responsive">
-              <table className="corporate-table detail-card-table">
-                <thead><tr><th colSpan="2" style={{ textAlign: 'left' }}>PERSONAL DETAILS</th></tr></thead>
-                <tbody>
-                  {[
-                    { label: 'FIRST NAME', value: details.personal.firstName },
-                    { label: 'MIDDLE NAME', value: details.personal.middleName },
-                    { label: 'LAST NAME', value: details.personal.lastName },
-                    { label: 'CONTACT NUMBER', value: details.personal.contactNumber, masked: true, isEmail: false, key: `${member.sNo}_phone` },
-                    { label: 'ALTERNATE NUMBER', value: details.personal.alternateNumber },
-                    { label: 'TIME ZONE', value: details.personal.timeZone },
-                    // SSN unmasking directly without OTP!
-                    { label: 'SSN', value: details.personal.ssn, masked: true, isEmail: false, key: `${member.sNo}_ssn` },
-                    { label: 'DATE OF BIRTH', value: details.personal.dob },
-                    { label: 'EMPLOYER', value: details.personal.employer },
-                    { label: 'GENDER', value: details.personal.gender },
-                    { label: 'OCCUPATION', value: details.personal.occupation },
-                    { label: 'VISA TYPE', value: details.personal.visaType },
-                    // Email unmasking REQUIRES OTP API!
-                    { label: 'EMAIL', value: details.personal.email, masked: true, isEmail: true, key: `${member.sNo}_email_detail` },
-                    { label: 'ADDRESS', value: details.personal.address },
-                    { label: 'CITY', value: details.personal.city },
-                    { label: 'STATE', value: details.personal.state },
-                    { label: 'ZIPCODE', value: details.personal.zipcode },
-                    { label: 'FILING STATUS', value: details.personal.filingStatus },
-                    { label: 'FILING TYPE', value: details.personal.filingType },
-                    { label: 'FIRST ENTRY DATE INTO USA', value: details.personal.firstEntry },
-                    { label: 'DATE OF MARRIAGE', value: details.personal.marriageDate },
-                    { label: 'HAVE YOU BEEN REFERRED?', value: details.personal.referred },
-                    { label: 'REFERRED BY (NAME)', value: details.personal.referredName },
-                    { label: 'REFERRED BY (EMAIL)', value: details.personal.referredEmail },
-                    { label: 'UPDATED DATE & TIME', value: details.personal.updatedAt },
-                  ].map((row, i) =>
-                    row.masked ? (
-                      <tr key={row.key}>
-                        <td style={{ width: '30%', fontWeight: '600', color: 'var(--text-muted)' }}>{row.label}</td>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span>{unmasked[row.key] ? row.value : (row.isEmail ? 'XXXXXXXXX.COM' : 'XXX-XX-XXXX')}</span>
-                            <button
-                              className="email-toggle-eye-btn"
-                              onClick={() => handleToggleField(row.key, row.isEmail)}
-                              title={unmasked[row.key] ? 'Mask Field' : 'Reveal Field'}
-                            >
-                              {unmasked[row.key] ? <EyeOff size={14} /> : <Eye size={14} />}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      <tr key={i}>
-                        <td style={{ width: '30%', fontWeight: '600', color: 'var(--text-muted)' }}>{row.label}</td>
-                        <td>{row.value || '—'}</td>
-                      </tr>
-                    )
+              {loadingProfile ? (
+                <div style={{ padding: '15px', textAlign: 'center', color: '#0076a3', fontSize: '13px', fontWeight: '600' }}>
+                  <Loader2 size={18} className="animate-spin" style={{ display: 'inline', marginRight: '6px' }} />
+                  Loading personal details...
+                </div>
+              ) : (
+                <>
+                  {!profileData?.personalInfo && (
+                    <div style={{ marginBottom: '12px', padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '4px', fontSize: '12px', color: '#1e40af' }}>
+                      ℹ Showing registered member account details (Extended profile form not yet submitted by member).
+                    </div>
                   )}
-                </tbody>
-              </table>
+                  <table className="corporate-table detail-card-table">
+                    <thead><tr><th colSpan="2" style={{ textAlign: 'left' }}>PERSONAL DETAILS</th></tr></thead>
+                    <tbody>
+                      {[
+                        { label: 'FIRST NAME', value: profileData?.personalInfo?.first_name || member.raw?.first_name || member.name?.split(' ')[0] || '—' },
+                        { label: 'MIDDLE NAME', value: profileData?.personalInfo?.middle_name || '—' },
+                        { label: 'LAST NAME', value: profileData?.personalInfo?.last_name || member.raw?.last_name || member.name?.split(' ').slice(1).join(' ') || '—' },
+                        { label: 'CONTACT NUMBER', value: profileData?.personalInfo?.contact_number || member.raw?.contact_number || '—', masked: true, isEmail: false, key: `${member._id || member.sNo}_phone` },
+                        { label: 'ALTERNATE NUMBER', value: profileData?.personalInfo?.alternate_number || member.raw?.alter_number || '—' },
+                        { label: 'TIME ZONE', value: profileData?.personalInfo?.timezone || member.raw?.time_zone || '—' },
+                        { label: 'SSN / TIN TYPE', value: profileData?.personalInfo?.ssn_tin || member.raw?.tin_type || member.filingType || '—', masked: true, isEmail: false, key: `${member._id || member.sNo}_ssn` },
+                        { label: 'DATE OF BIRTH', value: profileData?.personalInfo?.date_of_birth ? new Date(profileData.personalInfo.date_of_birth).toLocaleDateString() : '—' },
+                        { label: 'OCCUPATION', value: profileData?.personalInfo?.occupation || '—' },
+                        { label: 'GENDER', value: profileData?.personalInfo?.gender || '—' },
+                        { label: 'VISA TYPE', value: profileData?.personalInfo?.visa_type || '—' },
+                        { label: 'EMAIL', value: profileData?.personalInfo?.email || member.raw?.email || member.email || '—', masked: true, isEmail: true, key: `${member._id || member.sNo}_email_detail` },
+                        { label: 'MAILING ADDRESS', value: profileData?.personalInfo?.mailing_address || '—' },
+                        { label: 'CITY', value: profileData?.personalInfo?.city || '—' },
+                        { label: 'STATE', value: profileData?.personalInfo?.state || '—' },
+                        { label: 'ZIPCODE', value: profileData?.personalInfo?.zipcode || '—' },
+                        { label: 'FILING STATUS', value: profileData?.personalInfo?.filing_status || member.raw?.filestatus || member.status || '—' },
+                        { label: 'FIRST ENTRY DATE INTO USA', value: profileData?.personalInfo?.first_entry_date_into_usa ? new Date(profileData.personalInfo.first_entry_date_into_usa).toLocaleDateString() : '—' },
+                        { label: 'REGISTRATION DATE', value: member.raw?.date_created ? new Date(member.raw.date_created).toLocaleString() : member.regDate || '—' },
+                        { label: 'LAST UPDATED', value: member.raw?.date_updated ? new Date(member.raw.date_updated).toLocaleString() : member.statusDate || '—' },
+                      ].map((row, i) =>
+                        row.masked ? (
+                          <tr key={row.key}>
+                            <td style={{ width: '30%', fontWeight: '600', color: 'var(--text-muted)' }}>{row.label}</td>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span>{unmasked[row.key] ? row.value : (row.isEmail ? 'XXXXXXXXX.COM' : 'XXX-XX-XXXX')}</span>
+                                <button
+                                  className="email-toggle-eye-btn"
+                                  onClick={() => handleToggleField(row.key, row.isEmail)}
+                                  title={unmasked[row.key] ? 'Mask Field' : 'Reveal Field'}
+                                >
+                                  {unmasked[row.key] ? <EyeOff size={14} /> : <Eye size={14} />}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          <tr key={i}>
+                            <td style={{ width: '30%', fontWeight: '600', color: 'var(--text-muted)' }}>{row.label}</td>
+                            <td>{row.value || '—'}</td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                  </table>
+                </>
+              )}
             </div>
           )}
 
           {/* ── Spouse Info ── */}
           {activeTab === 'spouse' && (
             <div className="table-responsive">
-              <table className="corporate-table detail-card-table">
-                <thead><tr><th colSpan="2" style={{ textAlign: 'left' }}>SPOUSE DETAILS</th></tr></thead>
-                <tbody>
-                  {[
-                    ['FIRST NAME', details.spouse.firstName],
-                    ['MIDDLE NAME', details.spouse.middleName],
-                    ['LAST NAME', details.spouse.lastName],
-                    ['SSN', details.spouse.ssn],
-                    ['DATE OF BIRTH', details.spouse.dob],
-                    ['OCCUPATION', details.spouse.occupation],
-                    ['VISA TYPE', details.spouse.visaType],
-                    ['TAX ID TYPE', details.spouse.taxIdType],
-                    ['PASSPORT NUMBER', details.spouse.passportNumber],
-                    ['PASSPORT EXPIRY DATE', details.spouse.passportExpiry],
-                    ['VISA NUMBER', details.spouse.visaNumber],
-                    ['VISA EXPIRY DATE', details.spouse.visaExpiry],
-                    ['USA ENTRY DATE', details.spouse.usaEntry],
-                    ['UPDATED DATE & TIME', details.spouse.updatedAt],
-                  ].map(([l, v], i) => (
-                    <tr key={i}>
-                      <td style={{ width: '30%', fontWeight: '600', color: 'var(--text-muted)' }}>{l}</td>
-                      <td>{v || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {loadingProfile ? (
+                <div style={{ padding: '15px', textAlign: 'center', color: '#0076a3', fontSize: '13px', fontWeight: '600' }}>
+                  <Loader2 size={18} className="animate-spin" style={{ display: 'inline', marginRight: '6px' }} />
+                  Loading spouse details...
+                </div>
+              ) : profileData?.spouseInfo && Object.keys(profileData.spouseInfo).length > 0 ? (
+                <table className="corporate-table detail-card-table">
+                  <thead><tr><th colSpan="2" style={{ textAlign: 'left' }}>SPOUSE DETAILS</th></tr></thead>
+                  <tbody>
+                    {[
+                      ['FIRST NAME', profileData.spouseInfo.first_name],
+                      ['MIDDLE NAME', profileData.spouseInfo.middle_name],
+                      ['LAST NAME', profileData.spouseInfo.last_name],
+                      ['GENDER', profileData.spouseInfo.gender],
+                      ['DATE OF BIRTH', profileData.spouseInfo.date_of_birth ? new Date(profileData.spouseInfo.date_of_birth).toLocaleDateString() : ''],
+                      ['OCCUPATION', profileData.spouseInfo.occupation],
+                      ['VISA TYPE', profileData.spouseInfo.visa_type],
+                      ['TAX ID TYPE', profileData.spouseInfo.tax_id_type],
+                      ['SSN / ITIN', profileData.spouseInfo.ssn_itin],
+                      ['PASSPORT NUMBER', profileData.spouseInfo.passport_number],
+                      ['PASSPORT EXPIRY DATE', profileData.spouseInfo.passport_expiry_date ? new Date(profileData.spouseInfo.passport_expiry_date).toLocaleDateString() : ''],
+                      ['VISA NUMBER', profileData.spouseInfo.visa_number],
+                      ['VISA EXPIRY DATE', profileData.spouseInfo.visa_expiry_date ? new Date(profileData.spouseInfo.visa_expiry_date).toLocaleDateString() : ''],
+                      ['FIRST ENTRY DATE INTO USA', profileData.spouseInfo.first_entry_date_into_usa ? new Date(profileData.spouseInfo.first_entry_date_into_usa).toLocaleDateString() : ''],
+                      ['CREATED AT', profileData.spouseInfo.createdAt ? new Date(profileData.spouseInfo.createdAt).toLocaleString() : ''],
+                      ['UPDATED AT', profileData.spouseInfo.updatedAt ? new Date(profileData.spouseInfo.updatedAt).toLocaleString() : ''],
+                    ].map(([l, v], i) => (
+                      <tr key={i}>
+                        <td style={{ width: '30%', fontWeight: '600', color: 'var(--text-muted)' }}>{l}</td>
+                        <td>{v || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                  <p style={{ margin: 0, fontWeight: '600', fontSize: '13px' }}>No spouse details submitted yet</p>
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94a3b8' }}>Member stage: <strong>{member.status || 'Basic Information Pending'}</strong></p>
+                </div>
+              )}
             </div>
           )}
 
           {/* ── Dependent Info ── */}
           {activeTab === 'dependent' && (
             <div className="table-responsive">
-              <table className="corporate-table">
-                <thead>
-                  <tr>
-                    <th>S.NO</th><th>NAME</th><th>SSN/ITIN</th>
-                    <th>RELATIONSHIP</th><th>DATE OF BIRTH</th><th>VISA TYPE</th><th>UPDATED DATE</th><th>SHOW</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {details.dependents && details.dependents.length > 0 ? (
-                    details.dependents.map((dep, i) => (
-                      <tr key={i}>
-                        <td>{i + 1}</td>
-                        <td style={{ fontWeight: '500' }}>{dep.name}</td>
-                        <td>{dep.ssn}</td>
-                        <td>{dep.relationship}</td>
-                        <td>{dep.dob}</td>
-                        <td>{dep.visa}</td>
-                        <td style={{ color: 'var(--text-muted)' }}>{dep.updated}</td>
-                        <td>
-                          <button className="btn-view-action" style={{ padding: '4px 8px', fontSize: '11px' }}
-                            onClick={() => alert(`Viewing details: ${dep.name}`)}>
-                            CLICK TO VIEW
-                          </button>
-                        </td>
+              {loadingProfile ? (
+                <div style={{ padding: '15px', textAlign: 'center', color: '#0076a3', fontSize: '13px', fontWeight: '600' }}>
+                  <Loader2 size={18} className="animate-spin" style={{ display: 'inline', marginRight: '6px' }} />
+                  Loading dependent details...
+                </div>
+              ) : (() => {
+                const deps = Array.isArray(profileData?.dependentInfo)
+                  ? profileData.dependentInfo
+                  : (profileData?.dependentInfo ? [profileData.dependentInfo] : []);
+
+                return deps.length > 0 ? (
+                  <table className="corporate-table">
+                    <thead>
+                      <tr>
+                        <th>S.NO</th>
+                        <th>NAME</th>
+                        <th>GENDER</th>
+                        <th>RELATIONSHIP</th>
+                        <th>DATE OF BIRTH</th>
+                        <th>VISA TYPE</th>
+                        <th>TAX ID TYPE</th>
+                        <th>SSN / ITIN</th>
+                        <th>PASSPORT NO</th>
+                        <th>PASSPORT EXPIRY</th>
+                        <th>VISA NO</th>
+                        <th>VISA EXPIRY</th>
+                        <th>USA ENTRY DATE</th>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic', padding: '20px' }}>
-                        No dependent details listed for this member.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody>
+                      {deps.map((dep, i) => (
+                        <tr key={dep._id || i}>
+                          <td>{i + 1}</td>
+                          <td style={{ fontWeight: '600' }}>{`${dep.first_name || ''} ${dep.middle_name || ''} ${dep.last_name || ''}`.trim() || '—'}</td>
+                          <td>{dep.gender || '—'}</td>
+                          <td>{dep.relationship || '—'}</td>
+                          <td>{dep.date_of_birth ? new Date(dep.date_of_birth).toLocaleDateString() : '—'}</td>
+                          <td>{dep.visa_type || '—'}</td>
+                          <td>{dep.tax_id_type || '—'}</td>
+                          <td>{dep.ssn_itin || '—'}</td>
+                          <td>{dep.passport_number || '—'}</td>
+                          <td>{dep.passport_expiry_date ? new Date(dep.passport_expiry_date).toLocaleDateString() : '—'}</td>
+                          <td>{dep.visa_number || '—'}</td>
+                          <td>{dep.visa_expiry_date ? new Date(dep.visa_expiry_date).toLocaleDateString() : '—'}</td>
+                          <td>{dep.first_entry_date_into_usa ? new Date(dep.first_entry_date_into_usa).toLocaleDateString() : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                    <p style={{ margin: 0, fontWeight: '600', fontSize: '13px' }}>No dependent details submitted yet</p>
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94a3b8' }}>Member has not listed any dependents.</p>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
           {/* ── Bank Details ── */}
           {activeTab === 'bank' && (
             <div style={{ border: '1px solid var(--border-light)', padding: '20px', borderRadius: 'var(--radius-sm)', background: '#fff' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                <h3 style={{ fontSize: '15px', fontWeight: 'bold', margin: 0 }}>Bank Details</h3>
-                <button style={{ background: '#3ea94f', color: '#fff', border: 'none', padding: '6px 12px', fontSize: '12px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}
-                  onClick={() => alert('Bank details edit dialog opened.')}>
-                  ✏ Edit Bank Details
-                </button>
-              </div>
-              <div className="table-responsive">
-                <table className="corporate-table">
-                  <tbody>
-                    {[
-                      ['Bank Name', details.bank.bankName],
-                      ['Bank Account Number', details.bank.accountNumber],
-                      ['Bank Routing Number', details.bank.routingNumber],
-                      ['Account Type', details.bank.accountType],
-                      ['Updated Date', details.bank.updatedAt],
-                    ].map(([l, v], i) => (
-                      <tr key={i}>
-                        <td style={{ fontWeight: 'bold', width: '25%', color: 'var(--text-muted)' }}>{l}</td>
-                        <td>{v || '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <h4 style={{ fontWeight: 'bold', marginBottom: '16px', fontSize: '14px' }}>Bank Account Details</h4>
+              {loadingProfile ? (
+                <div style={{ padding: '15px', textAlign: 'center', color: '#0076a3', fontSize: '13px', fontWeight: '600' }}>
+                  <Loader2 size={18} className="animate-spin" style={{ display: 'inline', marginRight: '6px' }} />
+                  Loading bank details...
+                </div>
+              ) : profileData?.bankDetails && Object.keys(profileData.bankDetails).length > 0 ? (
+                <div className="table-responsive">
+                  <table className="corporate-table">
+                    <tbody>
+                      {[
+                        ['Bank Name', profileData.bankDetails.bank_name],
+                        ['Account Number', profileData.bankDetails.account_number],
+                        ['Routing Number', profileData.bankDetails.routing_number],
+                        ['Account Type', profileData.bankDetails.account_type],
+                        ['Created At', profileData.bankDetails.createdAt ? new Date(profileData.bankDetails.createdAt).toLocaleString() : ''],
+                        ['Updated At', profileData.bankDetails.updatedAt ? new Date(profileData.bankDetails.updatedAt).toLocaleString() : ''],
+                      ].map(([l, v], i) => (
+                        <tr key={i}>
+                          <td style={{ fontWeight: 'bold', width: '25%', color: 'var(--text-muted)' }}>{l}</td>
+                          <td>{v || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                  <p style={{ margin: 0, fontWeight: '600', fontSize: '13px' }}>No bank account details submitted yet</p>
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94a3b8' }}>Bank account information will appear once filled by the member.</p>
+                </div>
+              )}
             </div>
           )}
 
           {/* ── Address ── */}
           {activeTab === 'address' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ border: '1px solid var(--border-light)', padding: '16px', borderRadius: 'var(--radius-sm)', background: '#fff' }}>
-                <h4 style={{ fontWeight: 'bold', marginBottom: '12px', fontSize: '14px' }}>Current Address Details</h4>
-                <p style={{ fontSize: '13px', margin: 0 }}><strong>Street Address:</strong> {details.personal.address}</p>
-                <p style={{ fontSize: '13px', margin: '4px 0' }}><strong>City:</strong> {details.personal.city}, <strong>State:</strong> {details.personal.state} — {details.personal.zipcode}</p>
-                <p style={{ fontSize: '13px', margin: 0 }}><strong>Country:</strong> United States</p>
-              </div>
-              <div style={{ border: '1px solid var(--border-light)', padding: '16px', borderRadius: 'var(--radius-sm)', background: '#fff' }}>
-                <h4 style={{ fontWeight: 'bold', marginBottom: '12px', fontSize: '14px' }}>Mailing Address Details</h4>
-                <p style={{ fontSize: '13px', margin: 0, fontStyle: 'italic', color: 'var(--text-muted)' }}>Same as Current Address</p>
-              </div>
+            <div style={{ border: '1px solid var(--border-light)', padding: '20px', borderRadius: 'var(--radius-sm)', background: '#fff' }}>
+              <h4 style={{ fontWeight: 'bold', marginBottom: '16px', fontSize: '14px' }}>Member Address Records</h4>
+              {loadingProfile ? (
+                <div style={{ padding: '15px', textAlign: 'center', color: '#0076a3', fontSize: '13px', fontWeight: '600' }}>
+                  <Loader2 size={18} className="animate-spin" style={{ display: 'inline', marginRight: '6px' }} />
+                  Loading address details...
+                </div>
+              ) : (() => {
+                const addrs = Array.isArray(profileData?.address)
+                  ? profileData.address
+                  : (profileData?.address ? [profileData.address] : []);
+
+                return addrs.length > 0 ? (
+                  <div className="table-responsive">
+                    <table className="corporate-table">
+                      <thead>
+                        <tr>
+                          <th>S.NO</th>
+                          <th>PERSON</th>
+                          <th>STATE</th>
+                          <th>TAX YEAR</th>
+                          <th>ADDRESS FROM</th>
+                          <th>ADDRESS TO</th>
+                          <th>CREATED AT</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {addrs.map((addr, i) => (
+                          <tr key={addr._id || i}>
+                            <td>{i + 1}</td>
+                            <td style={{ fontWeight: '600' }}>{addr.person || 'Taxpayer'}</td>
+                            <td>{addr.state?.name || '—'}</td>
+                            <td>{addr.year?.name || '—'}</td>
+                            <td>{addr.address_from ? new Date(addr.address_from).toLocaleDateString() : '—'}</td>
+                            <td>{addr.address_to ? new Date(addr.address_to).toLocaleDateString() : '—'}</td>
+                            <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+                              {addr.createdAt ? new Date(addr.createdAt).toLocaleString() : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                    <p style={{ margin: 0, fontWeight: '600', fontSize: '13px' }}>No address history records submitted yet</p>
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94a3b8' }}>Address details will appear once filled by the member.</p>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -652,12 +777,16 @@ export default function MemberTableLayout({
   subtitle,
   statusCode = 'all',
   members: initialMembersProp,
-  selectedYear = 'TY2025',
+  selectedYear = `TY${new Date().getFullYear()}`,
 }) {
-  const numericYear = selectedYear ? String(selectedYear).replace('TY', '') : '2025';
+  const [numericYear, setNumericYear] = useState(() => String(selectedYear).replace('TY', ''));
+  // Update numericYear when selectedYear prop changes
+  useEffect(() => {
+    setNumericYear(String(selectedYear).replace('TY', ''));
+  }, [selectedYear]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDate, setFilterDate] = useState('');
-  const [activeSubTab, setActiveSubTab] = useState('New'); // 'New' or 'Modified'
+  const [activeSubTab, setActiveSubTab] = useState(statusCode === 'all' ? '' : 'New'); // '' (none), 'New' or 'Modified'
   const [selectedMember, setSelectedMember] = useState(null);
   const [activeDetailTab, setActiveDetailTab] = useState('personal');
   const [unmaskedEmails, setUnmaskedEmails] = useState({});
@@ -674,13 +803,13 @@ export default function MemberTableLayout({
   const [apiError, setApiError] = useState('');
   const [activeYearId, setActiveYearId] = useState('6a59ede933d5d0234c05b6bf');
 
-  // Fetch current year ID on mount
+  // Fetch active year ID based on selectedYear prop (e.g. TY2025 -> 2025)
   useEffect(() => {
     let isMounted = true;
-    const fetchCurrentYearId = async () => {
+    const fetchYearId = async () => {
       try {
         const token = getAuthToken();
-        const res = await fetch(URLS.GetCurrentYear, {
+        const res = await fetch(URLS.GetYears, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -689,17 +818,22 @@ export default function MemberTableLayout({
         });
         if (res.ok) {
           const result = await res.json();
-          if (isMounted && result.success && result.data && result.data._id) {
-            setActiveYearId(result.data._id);
+          if (isMounted && result.success && Array.isArray(result.data)) {
+            const found = result.data.find(y => String(y.name) === String(numericYear));
+            if (found && found._id) {
+              setActiveYearId(found._id);
+            } else if (result.data.length > 0 && result.data[0]._id) {
+              setActiveYearId(result.data[0]._id);
+            }
           }
         }
       } catch (err) {
-        console.warn('Current year fetch warning:', err);
+        console.warn('Year fetch warning:', err);
       }
     };
-    fetchCurrentYearId();
+    fetchYearId();
     return () => { isMounted = false; };
-  }, []);
+  }, [selectedYear, numericYear]);
 
   // Fetch registered members from backend API
   useEffect(() => {
@@ -709,13 +843,17 @@ export default function MemberTableLayout({
       setApiError('');
       try {
         const token = getAuthToken();
+        const filterPayload = statusCode === 'all'
+          ? (activeSubTab === 'New' ? 'new' : (activeSubTab === 'Modified' ? 'modified' : ''))
+          : (activeSubTab === 'Modified' ? 'modified' : 'new');
+
         const payload = {
           page: pagination.currentPage,
           limit: 10,
           search: searchTerm || "",
-          year_id: activeYearId || "6a59ede933d5d0234c05b6bf",
-          filestatus: statusCode === 'all' ? '' : (statusCode || ''),
-          filter: activeSubTab === 'New' ? 'new' : 'modified',
+          year_id: activeYearId || "",
+          filestatus: statusCode === 'all' || !statusCode ? 'all' : statusCode,
+          filter: filterPayload,
           status_date: filterDate || ""
         };
 
@@ -759,18 +897,15 @@ export default function MemberTableLayout({
           }
         } else if (isMounted) {
           setApiError(result.message || 'Failed to fetch registered members.');
+          setIsApiLoaded(true);
+          setApiMembers([]);
         }
       } catch (err) {
         if (isMounted) {
           console.error('Fetch members error:', err);
           setApiError(err.message);
-          setIsApiLoaded(false);
-          // Fallback to local mock array ONLY if API call threw network/syntax error
-          if (initialMembersProp && initialMembersProp.length > 0) {
-            setApiMembers(initialMembersProp);
-          } else {
-            setApiMembers(INITIAL_MEMBERS);
-          }
+          setIsApiLoaded(true);
+          setApiMembers([]);
         }
       } finally {
         if (isMounted) setLoading(false);
@@ -781,8 +916,8 @@ export default function MemberTableLayout({
     return () => { isMounted = false; };
   }, [statusCode, activeSubTab, searchTerm, filterDate, pagination.currentPage, selectedYear, activeYearId]);
 
-  // Determine list to display (if API loaded, display apiMembers array directly — even if 0 items!)
-  const displayMembers = isApiLoaded ? apiMembers : (initialMembersProp || INITIAL_MEMBERS);
+  // Determine list to display (never load static mock data)
+  const displayMembers = apiMembers;
 
   const getMaskedEmail = (email) => {
     if (!email) return 'XXXXXXXXXX.COM';
@@ -833,14 +968,14 @@ export default function MemberTableLayout({
     }
   };
 
-  const handleEmailEyeClick = async (memberId) => {
+  const handleEmailEyeClick = (memberId) => {
     const key = `${memberId}_email`;
     if (unmaskedEmails[key]) {
       setUnmaskedEmails(prev => ({ ...prev, [key]: false }));
     } else {
       setPendingMemberId(memberId);
-      await handleSendEmailOtp(memberId);
       setOtpOpen(true);
+      handleSendEmailOtp(memberId);
     }
   };
 
@@ -854,11 +989,56 @@ export default function MemberTableLayout({
     return false;
   };
 
-  // Helper to trigger browser file download from Blob or String URL
+  // Helper to trigger browser file download from Blob, Array, or String URL
   const triggerFileDownload = (blobOrUrl, fileName) => {
-    if (typeof blobOrUrl === 'string' && blobOrUrl.length > 0) {
+    if (blobOrUrl instanceof Blob) {
+      const url = window.URL.createObjectURL(blobOrUrl);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => window.URL.revokeObjectURL(url), 2000);
+    } else if (Array.isArray(blobOrUrl)) {
+      if (blobOrUrl.length === 0) {
+        alert("No member records found to export.");
+        return;
+      }
+      const headers = [
+        "File No", "File Type", "First Name", "Last Name", "Contact Number",
+        "Alt Number", "Email", "Tin Type", "File Status", "Stage", "Year",
+        "Created Date", "Updated Date"
+      ];
+      const rows = blobOrUrl.map(item => [
+        `"${item.file_no || ''}"`,
+        `"${(item.file_type || '').replace(/"/g, '""')}"`,
+        `"${(item.first_name || '').replace(/"/g, '""')}"`,
+        `"${(item.last_name || '').replace(/"/g, '""')}"`,
+        `"${(item.contact_number || '').replace(/"/g, '""')}"`,
+        `"${(item.alter_number || '').replace(/"/g, '""')}"`,
+        `"${(item.email || '').replace(/"/g, '""')}"`,
+        `"${(item.tin_type || '').replace(/"/g, '""')}"`,
+        `"${(item.filestatus || '').replace(/"/g, '""')}"`,
+        `"${(item.current_stage || item.stage || '').replace(/"/g, '""')}"`,
+        `"${(item.year?.name || '').replace(/"/g, '""')}"`,
+        `"${item.date_created ? new Date(item.date_created).toLocaleString() : ''}"`,
+        `"${item.date_updated ? new Date(item.date_updated).toLocaleString() : ''}"`
+      ].join(','));
+
+      const csvString = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName.endsWith('.csv') ? fileName : fileName.replace(/\.xlsx$/i, '.csv');
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => window.URL.revokeObjectURL(url), 2000);
+    } else if (typeof blobOrUrl === 'string' && blobOrUrl.length > 0) {
       let fullUrl = blobOrUrl;
-      if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://') && !fullUrl.startsWith('blob:')) {
+      if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://') && !fullUrl.startsWith('blob:') && !fullUrl.startsWith('data:')) {
         fullUrl = `${URLS.Base}${fullUrl.startsWith('/') ? fullUrl.slice(1) : fullUrl}`;
       }
       const a = document.createElement('a');
@@ -868,15 +1048,6 @@ export default function MemberTableLayout({
       document.body.appendChild(a);
       a.click();
       a.remove();
-    } else if (blobOrUrl instanceof Blob) {
-      const url = window.URL.createObjectURL(blobOrUrl);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => window.URL.revokeObjectURL(url), 2000);
     }
   };
 
@@ -887,7 +1058,7 @@ export default function MemberTableLayout({
       const payload = {
         year_id: activeYearId || "6a59ede933d5d0234c05b6bf",
         search: searchTerm || "",
-        filestatus: statusCode === 'all' ? '' : (statusCode || '')
+        filestatus: statusCode === 'all' || !statusCode ? 'all' : statusCode
       };
 
       const res = await fetch(URLS.ExportPerivousYear, {
@@ -906,19 +1077,24 @@ export default function MemberTableLayout({
       const contentType = res.headers.get("content-type") || "";
       if (contentType.includes("application/json")) {
         const result = await res.json();
-        const filePath = result.data?.url || result.data?.file || result.data?.filePath || result.data || result.url || result.file;
+        const filePath = result.data?.url || result.data?.file || result.data?.filePath || result.download_url || result.file_path || result.file;
         if (typeof filePath === 'string' && filePath.length > 0) {
           triggerFileDownload(filePath, `previous_members_except_${numericYear}.xlsx`);
+        } else if (Array.isArray(result.data)) {
+          triggerFileDownload(result.data, `previous_members_except_${numericYear}.csv`);
+        } else if (typeof result.data === 'string' && result.data.length > 0) {
+          triggerFileDownload(result.data, `previous_members_except_${numericYear}.xlsx`);
         } else {
           alert(result.message || 'Export completed.');
         }
       } else {
-        const blob = await res.blob();
-        triggerFileDownload(blob, `previous_members_except_${numericYear}.xlsx`);
+        const rawBlob = await res.blob();
+        const excelBlob = new Blob([rawBlob], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        triggerFileDownload(excelBlob, `previous_members_except_${numericYear}.xlsx`);
       }
     } catch (err) {
       console.error('Export error:', err);
-      alert(`Export request completed.`);
+      alert(`Export request failed: ${err.message}`);
     }
   };
 
@@ -927,8 +1103,9 @@ export default function MemberTableLayout({
     try {
       const token = getAuthToken();
       const payload = {
+        year_id: activeYearId || "6a59ede933d5d0234c05b6bf",
         search: searchTerm || "",
-        filestatus: statusCode === 'all' ? '' : (statusCode || '')
+        filestatus: statusCode === 'all' || !statusCode ? 'all' : statusCode
       };
 
       const res = await fetch(URLS.ExportCurrentYear, {
@@ -947,19 +1124,24 @@ export default function MemberTableLayout({
       const contentType = res.headers.get("content-type") || "";
       if (contentType.includes("application/json")) {
         const result = await res.json();
-        const filePath = result.data?.url || result.data?.file || result.data?.filePath || result.data || result.url || result.file;
+        const filePath = result.data?.url || result.data?.file || result.data?.filePath || result.download_url || result.file_path || result.file;
         if (typeof filePath === 'string' && filePath.length > 0) {
           triggerFileDownload(filePath, `current_members_${numericYear}.xlsx`);
+        } else if (Array.isArray(result.data)) {
+          triggerFileDownload(result.data, `current_members_${numericYear}.csv`);
+        } else if (typeof result.data === 'string' && result.data.length > 0) {
+          triggerFileDownload(result.data, `current_members_${numericYear}.xlsx`);
         } else {
           alert(result.message || 'Export completed.');
         }
       } else {
-        const blob = await res.blob();
-        triggerFileDownload(blob, `current_members_${numericYear}.xlsx`);
+        const rawBlob = await res.blob();
+        const excelBlob = new Blob([rawBlob], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        triggerFileDownload(excelBlob, `current_members_${numericYear}.xlsx`);
       }
     } catch (err) {
       console.error('Export error:', err);
-      alert(`Export request completed.`);
+      alert(`Export request failed: ${err.message}`);
     }
   };
 
@@ -974,6 +1156,8 @@ export default function MemberTableLayout({
     ? counts[statusCode]
     : (counts.all !== undefined ? counts.all : (pagination.totalRecords || displayMembers.length));
 
+  const filteredTotalRecords = pagination.totalRecords !== undefined ? pagination.totalRecords : displayMembers.length;
+
   if (selectedMember) {
     return (
       <div className="content-card">
@@ -981,9 +1165,9 @@ export default function MemberTableLayout({
         <div className="table-filter-bar">
           <div className="filter-left-pill-group">
             <button className="pill-btn new-members" style={{ border: activeSubTab === 'New' ? '2px solid black' : 'none' }}
-              onClick={() => setActiveSubTab('New')}>New Registered Members</button>
+              onClick={() => setActiveSubTab(prev => (prev === 'New' ? '' : 'New'))}>New Registered Members</button>
             <button className="pill-btn modified-members" style={{ border: activeSubTab === 'Modified' ? '2px solid black' : 'none' }}
-              onClick={() => setActiveSubTab('Modified')}>Last Modified Members</button>
+              onClick={() => setActiveSubTab(prev => (prev === 'Modified' ? '' : 'Modified'))}>Last Modified Members</button>
             <span className="pill-badge">Total {totalCount}</span>
           </div>
         </div>
@@ -1034,7 +1218,7 @@ export default function MemberTableLayout({
             className="pill-btn new-members"
             style={{ border: activeSubTab === 'New' ? '2px solid black' : 'none' }}
             onClick={() => {
-              setActiveSubTab('New');
+              setActiveSubTab(prev => (prev === 'New' ? '' : 'New'));
               setPagination(prev => ({ ...prev, currentPage: 1 }));
             }}
           >
@@ -1044,7 +1228,7 @@ export default function MemberTableLayout({
             className="pill-btn modified-members"
             style={{ border: activeSubTab === 'Modified' ? '2px solid black' : 'none' }}
             onClick={() => {
-              setActiveSubTab('Modified');
+              setActiveSubTab(prev => (prev === 'Modified' ? '' : 'Modified'));
               setPagination(prev => ({ ...prev, currentPage: 1 }));
             }}
           >
@@ -1160,28 +1344,15 @@ export default function MemberTableLayout({
       {/* Pagination */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
         <div className="pagination-row">
-          <button
-            className={`page-link-btn ${pagination.currentPage === 1 ? 'active' : ''}`}
-            onClick={() => setPagination(prev => ({ ...prev, currentPage: 1 }))}
-          >
-            1
-          </button>
-          {pagination.totalPages > 1 && (
+          {Array.from({ length: pagination.totalPages || 1 }, (_, i) => i + 1).map(p => (
             <button
-              className={`page-link-btn ${pagination.currentPage === 2 ? 'active' : ''}`}
-              onClick={() => setPagination(prev => ({ ...prev, currentPage: 2 }))}
+              key={p}
+              className={`page-link-btn ${pagination.currentPage === p ? 'active' : ''}`}
+              onClick={() => setPagination(prev => ({ ...prev, currentPage: p }))}
             >
-              2
+              {p}
             </button>
-          )}
-          {pagination.totalPages > 2 && (
-            <button
-              className={`page-link-btn ${pagination.currentPage === 3 ? 'active' : ''}`}
-              onClick={() => setPagination(prev => ({ ...prev, currentPage: 3 }))}
-            >
-              3
-            </button>
-          )}
+          ))}
           {pagination.currentPage < pagination.totalPages && (
             <button
               className="page-link-btn"
@@ -1192,7 +1363,7 @@ export default function MemberTableLayout({
           )}
         </div>
         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-          Showing {displayMembers.length > 0 ? (pagination.currentPage - 1) * pagination.limit + 1 : 0} to {Math.min(pagination.currentPage * pagination.limit, totalCount)} of {totalCount} entries
+          Showing {displayMembers.length > 0 ? (pagination.currentPage - 1) * pagination.limit + 1 : 0} to {Math.min(pagination.currentPage * pagination.limit, filteredTotalRecords)} of {filteredTotalRecords} entries
         </div>
       </div>
 

@@ -284,13 +284,13 @@ export default function PaperFiling({ mode = 'pending' }) {
 
           {/* Excel download buttons */}
           <div className="excel-btn-group">
-            <button className="excel-download-btn" onClick={() => alert('Exporting (except 2025 year)…')}>
+            <button className="excel-download-btn" onClick={() => alert('Exporting (except 2026 year)…')}>
               <span>⬇ Excel</span>
-              <span className="excel-btn-subtext">Note: Download All members except 2025 Year</span>
+              <span className="excel-btn-subtext">Note: Download All members except 2026 Year</span>
             </button>
-            <button className="excel-download-btn" onClick={() => alert('Exporting 2025 year only…')}>
+            <button className="excel-download-btn" onClick={() => alert('Exporting 2026 year only…')}>
               <span>⬇ Excel</span>
-              <span className="excel-btn-subtext">Note: Download All Members 2025 Year Only</span>
+              <span className="excel-btn-subtext">Note: Download All Members 2026 Year Only</span>
             </button>
           </div>
         </>

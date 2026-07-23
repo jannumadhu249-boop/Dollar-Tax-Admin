@@ -27,4 +27,7 @@ export const URLS = {
     VerifyEmailOtp : base_url + "v1/minimumTax/admin/registeredMembers/verifyViewEmailOtp",
     ExportCurrentYear : base_url + "v1/minimumTax/admin/registeredMembers/exportCurrentYearMembers",
     ExportPerivousYear : base_url + "v1/minimumTax/admin/registeredMembers/exportPreviousMembers",
+
+    // Member View
+    GetMemberView : base_url + "v1/minimumTax/admin/memberView/member/",
 }
