@@ -15,10 +15,13 @@ import QueryList from './pages/QueryList';
 import Notes from './pages/Notes';
 import Leads from './pages/Leads';
 import SendMail from './pages/SendMail';
+import MNote from './pages/MNote';
 import Mailgun from './pages/Mailgun';
 import ReferralsReport from './pages/ReferralsReport';
 import PaymentsReport from './pages/PaymentsReport';
 import ClientSearch from './pages/ClientSearch';
+import ClientStage from './pages/ClientStage';
+import RefereeReport from './pages/RefereeReport';
 
 // ──────────────────────────────────────────────────────────
 //  Modular Pages — API integrated with MemberTableLayout
@@ -65,44 +68,45 @@ import PaperFilingPending from './pages/PaperFiling/PaperFilingPending';
 import PaperFilingDoneFolder from './pages/PaperFiling/PaperFilingDone';
 
 /* ─────────────────────────────────────────────────────────────
-   URL Hash → Filter Key mapping
+   URL Path → Filter Key mapping (removed # for clean URLs)
 ───────────────────────────────────────────────────────────── */
 const ROUTE_MAP = {
-  'all-registered':                '#/all-registered',
-  'registered-users':              '#/processing/registered-users',
-  'info-pending':                  '#/processing/info-pending',
-  'scheduling-pending':            '#/processing/scheduling-pending',
-  'interview-pending':             '#/processing/interview-pending',
-  'docs-pending':                  '#/processing/document-pending',
-  'preparation-1':                 '#/preparation/preparation-1',
-  'preparation-2':                 '#/preparation/preparation-2',
-  'review-summary-1':              '#/preparation/review-summary-1',
-  'review-summary-2':              '#/preparation/review-summary-2',
-  'itin-files':                    '#/preparation/itin-files',
-  'revised-estimate':              '#/preparation/revised-estimate',
-  'payment-pending-efiling':       '#/payment/pending-efiling',
-  'payable-pending-paper-filing':  '#/payment/pending-paper-filing',
-  'fee-payment-received-1':        '#/payment/fee-received-1',
-  'fee-payment-received-2':        '#/payment/fee-received-2',
-  'client-review-efiling':         '#/client-review/efiling',
-  'client-review-paper-filing':    '#/client-review/paper-filing',
-  'efiling-pending-1':             '#/efiling/pending-1',
-  'efiling-pending-2':             '#/efiling/pending-2',
-  'efiled-awaiting-1':             '#/efiling/awaiting-1',
-  'efiled-awaiting-2':             '#/efiling/awaiting-2',
-  'efiled-rejected':               '#/efiling/rejected',
-  'city-return':                   '#/efiling/city-return',
-  'efiling-accepted-complete':     '#/efiling/accepted-complete',
-  'paper-filing-pending':          '#/paper-filing/pending',
-  'paper-filing-accepted-complete':'#/paper-filing/done',
-  'cancelled':                     '#/cancelled',
-  'query-list':                    '#/query-list',
-  'call-back-requests':            '#/call-back-requests',
-  'just-uploaded-docs':            '#/just-uploaded-docs',
-  'send-mail':                     '#/send-mail',
-  'mailgun':                       '#/mailgun',
-  'leads':                         '#/leads',
-  'notes':                         '#/notes',
+  'all-registered':                '/all-registered',
+  'registered-users':              '/processing/registered-users',
+  'info-pending':                  '/processing/info-pending',
+  'scheduling-pending':            '/processing/scheduling-pending',
+  'interview-pending':             '/processing/interview-pending',
+  'docs-pending':                  '/processing/document-pending',
+  'preparation-1':                 '/preparation/preparation-1',
+  'preparation-2':                 '/preparation/preparation-2',
+  'review-summary-1':              '/preparation/review-summary-1',
+  'review-summary-2':              '/preparation/review-summary-2',
+  'itin-files':                    '/preparation/itin-files',
+  'revised-estimate':              '/preparation/revised-estimate',
+  'payment-pending-efiling':       '/payment/pending-efiling',
+  'payable-pending-paper-filing':  '/payment/pending-paper-filing',
+  'fee-payment-received-1':        '/payment/fee-received-1',
+  'fee-payment-received-2':        '/payment/fee-received-2',
+  'client-review-efiling':         '/client-review/efiling',
+  'client-review-paper-filing':    '/client-review/paper-filing',
+  'efiling-pending-1':             '/efiling/pending-1',
+  'efiling-pending-2':             '/efiling/pending-2',
+  'efiled-awaiting-1':             '/efiling/awaiting-1',
+  'efiled-awaiting-2':             '/efiling/awaiting-2',
+  'efiled-rejected':               '/efiling/rejected',
+  'city-return':                   '/efiling/city-return',
+  'efiling-accepted-complete':     '/efiling/accepted-complete',
+  'paper-filing-pending':          '/paper-filing/pending',
+  'paper-filing-accepted-complete':'/paper-filing/done',
+  'cancelled':                     '/cancelled',
+  'query-list':                    '/query-list',
+  'call-back-requests':            '/call-back-requests',
+  'just-uploaded-docs':            '/just-uploaded-docs',
+  'send-mail':                     '/send-mail',
+  'm-note':                        '/m-note',
+  'mailgun':                       '/mailgun',
+  'leads':                         '/leads',
+  'notes':                         '/notes',
 };
 
 export default function App() {
@@ -118,32 +122,32 @@ export default function App() {
   // Default on login: All Registered
   const [selectedStatus, setSelectedStatus] = useState('all-registered');
 
-  // URL Hash Sync
+  // URL Path Sync (removed hash-based routing)
   useEffect(() => {
     if (!isLoggedIn) return;
 
-    const updateFromHash = () => {
-      const hash = window.location.hash;
-      const foundKey = Object.keys(ROUTE_MAP).find(k => ROUTE_MAP[k] === hash);
+    const updateFromPath = () => {
+      const path = window.location.pathname;
+      const foundKey = Object.keys(ROUTE_MAP).find(k => ROUTE_MAP[k] === path);
       if (foundKey) {
         setSelectedStatus(foundKey);
         setActiveTab('members');
-      } else if (!hash || hash === '#' || hash === '#/') {
-        window.location.hash = '#/all-registered';
+      } else if (!path || path === '/') {
+        window.history.pushState(null, '', '/all-registered');
         setSelectedStatus('all-registered');
       }
     };
 
-    updateFromHash();
-    window.addEventListener('hashchange', updateFromHash);
-    return () => window.removeEventListener('hashchange', updateFromHash);
+    updateFromPath();
+    window.addEventListener('popstate', updateFromPath);
+    return () => window.removeEventListener('popstate', updateFromPath);
   }, [isLoggedIn]);
 
   const handleFilterChange = (statusKey) => {
     setSelectedStatus(statusKey);
     setActiveTab('members');
     if (ROUTE_MAP[statusKey]) {
-      window.location.hash = ROUTE_MAP[statusKey];
+      window.history.pushState(null, '', ROUTE_MAP[statusKey]);
     }
   };
 
@@ -241,12 +245,18 @@ export default function App() {
 
     // Non-member tabs
     switch (activeTab) {
+      case 'client-stage':
+        return <ClientStage />;
+      case 'referee':
+        return <RefereeReport />;
       case 'client-search':
         return <ClientSearch selectedYear={selectedYear} setSelectedYear={setSelectedYear} />;
       case 'referrals':
         return <ReferralsReport selectedYear={selectedYear} setSelectedYear={setSelectedYear} />;
       case 'payments':
         return <PaymentsReport selectedYear={selectedYear} setSelectedYear={setSelectedYear} />;
+      case 'm-note':
+        return <MNote />;
       case 'estimator':
         return <Estimator />;
       case 'pipeline':
@@ -264,7 +274,7 @@ export default function App() {
         onLoginSuccess={() => {
           setIsLoggedIn(true);
           sessionStorage.setItem('isLoggedIn', 'true');
-          window.location.hash = '#/all-registered';
+          window.history.pushState(null, '', '/all-registered');
         }}
       />
     );
@@ -277,9 +287,9 @@ export default function App() {
         setActiveTab={(tab) => {
           setActiveTab(tab);
           if (tab !== 'members') {
-            window.location.hash = `#/${tab}`;
+            window.history.pushState(null, '', `/${tab}`);
           } else {
-            window.location.hash = ROUTE_MAP[selectedStatus] || '#/all-registered';
+            window.history.pushState(null, '', ROUTE_MAP[selectedStatus] || '/all-registered');
           }
         }}
         isProfileOpen={isProfileOpen}

@@ -478,9 +478,9 @@ export default function Navbar({
           {/* Client Stage */}
           <li>
             <button
-              className={`navbar-link ${activeTab === 'members' ? 'active' : ''}`}
+              className={`navbar-link ${activeTab === 'client-stage' ? 'active' : ''}`}
               onClick={() => {
-                setActiveTab('members');
+                setActiveTab('client-stage');
                 setActiveDropdown(null);
               }}
             >
@@ -491,9 +491,8 @@ export default function Navbar({
           {/* Client Search */}
           <li className="navbar-dropdown-container">
             <button
-              className={`navbar-link ${
-                activeDropdown === 'clientSearch' ? 'active' : ''
-              } ${activeTab === 'client-search' ? 'active' : ''}`}
+              className={`navbar-link ${activeDropdown === 'clientSearch' ? 'active' : ''
+                } ${activeTab === 'client-search' ? 'active' : ''}`}
               onClick={() => toggleDropdown('clientSearch')}
             >
               <span>Client Search</span>
@@ -509,9 +508,8 @@ export default function Navbar({
           {/* Referrals */}
           <li className="navbar-dropdown-container">
             <button
-              className={`navbar-link ${
-                activeDropdown === 'referrals' ? 'active' : ''
-              } ${activeTab === 'referrals' ? 'active' : ''}`}
+              className={`navbar-link ${activeDropdown === 'referrals' ? 'active' : ''
+                } ${activeTab === 'referrals' ? 'active' : ''}`}
               onClick={() => toggleDropdown('referrals')}
             >
               <span>Referrals</span>
@@ -527,10 +525,10 @@ export default function Navbar({
           {/* Referee */}
           <li>
             <button
-              className="navbar-link"
+              className={`navbar-link ${activeTab === 'referee' ? 'active' : ''}`}
               onClick={() => {
+                setActiveTab('referee');
                 setActiveDropdown(null);
-                alert('Referee Page loaded.');
               }}
             >
               Referee
@@ -540,10 +538,10 @@ export default function Navbar({
           {/* M Note */}
           <li>
             <button
-              className="navbar-link"
+              className={`navbar-link ${activeTab === 'm-note' ? 'active' : ''}`}
               onClick={() => {
+                setActiveTab('m-note');
                 setActiveDropdown(null);
-                alert('M Note Page loaded.');
               }}
             >
               M Note
@@ -553,9 +551,8 @@ export default function Navbar({
           {/* Payments */}
           <li className="navbar-dropdown-container">
             <button
-              className={`navbar-link ${
-                activeDropdown === 'payments' ? 'active' : ''
-              } ${activeTab === 'payments' ? 'active' : ''}`}
+              className={`navbar-link ${activeDropdown === 'payments' ? 'active' : ''
+                } ${activeTab === 'payments' ? 'active' : ''}`}
               onClick={() => toggleDropdown('payments')}
             >
               <span>Payments</span>
@@ -574,7 +571,7 @@ export default function Navbar({
       <div className="profile-dropdown-container">
         <button className="profile-trigger" onClick={handleProfileClick}>
           <User size={16} />
-          <span>Hi, Admin Admin</span>
+          <span>Admin</span>
           <ChevronDown size={14} />
         </button>
         {isProfileOpen && (

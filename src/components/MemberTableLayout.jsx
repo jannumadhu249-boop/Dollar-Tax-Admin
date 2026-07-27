@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, Download, Search, Calendar, ChevronLeft, RefreshCw, Loader2, Shield, Clock, CheckCircle, X, Send } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Eye, EyeOff, Download, Search, Calendar, ChevronLeft, RefreshCw, Loader2, Shield, Clock, CheckCircle, X, Send, Landmark, Plus, Edit3, User, Users, UserCheck, MapPin, FileDown, MessageSquare, CreditCard, UploadCloud, FileText, Trash2 } from 'lucide-react';
 import { getMemberDetails, WORKFLOW_STATUSES, INITIAL_COMMENTS, INITIAL_MEMBERS } from '../data/mockMembers';
 import { URLS } from '../url';
+import * as XLSX from 'xlsx';
 
 const getAuthToken = () => {
   const keys = ['authToken', 'token', 'adminToken', 'accessToken', 'jwt'];
@@ -187,20 +188,283 @@ function OtpModal({ isOpen, onClose, onVerify, onResend, fieldLabel }) {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   Bank Details Add / Edit Modal
+───────────────────────────────────────────────────────────── */
+function BankModal({ isOpen, onClose, onSave, bankData, memberName }) {
+  const [accountNumber, setAccountNumber] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [accountHolderName, setAccountHolderName] = useState('');
+  const [routingNumber, setRoutingNumber] = useState('');
+  const [accountType, setAccountType] = useState('Checking Account');
+  
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const isEdit = Boolean(bankData && Object.keys(bankData).length > 0 && (bankData.account_number || bankData.bank_name || bankData.accountNumber || bankData.bankName));
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setError('');
+    setSuccess('');
+    if (bankData && Object.keys(bankData).length > 0) {
+      setAccountNumber(bankData.account_number || bankData.accountNumber || '');
+      setBankName(bankData.bank_name || bankData.bankName || '');
+      setAccountHolderName(bankData.account_holder_name || bankData.account_holder || bankData.accountHolderName || memberName || '');
+      setRoutingNumber(bankData.routing_number || bankData.routingNumber || '');
+      
+      const rawType = bankData.account_type || bankData.accountType || 'Checking Account';
+      if (rawType.toLowerCase().includes('sav')) {
+        setAccountType('Saving Account');
+      } else {
+        setAccountType('Checking Account');
+      }
+    } else {
+      setAccountNumber('');
+      setBankName('');
+      setAccountHolderName(memberName || '');
+      setRoutingNumber('');
+      setAccountType('Checking Account');
+    }
+  }, [isOpen, bankData, memberName]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!accountNumber.trim()) { setError('Account Number is required.'); return; }
+    if (!bankName.trim()) { setError('Bank Name is required.'); return; }
+    if (!accountHolderName.trim()) { setError('Account Holder Name is required.'); return; }
+    if (!routingNumber.trim()) { setError('Routing Number is required.'); return; }
+    if (!accountType) { setError('Account Type is required.'); return; }
+
+    setError('');
+    setSaving(true);
+
+    try {
+      await onSave({
+        account_number: accountNumber.trim(),
+        bank_name: bankName.trim(),
+        account_holder_name: accountHolderName.trim(),
+        routing_number: routingNumber.trim(),
+        account_type: accountType
+      });
+      setSuccess(isEdit ? 'Bank details updated successfully!' : 'Bank details added successfully!');
+      setTimeout(() => {
+        setSaving(false);
+        setSuccess('');
+        onClose();
+      }, 700);
+    } catch (err) {
+      setSaving(false);
+      setError(err.message || 'Failed to save bank details.');
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px' }}>
+      <div style={{ background: '#fff', borderRadius: '14px', width: '100%', maxWidth: '520px', boxShadow: '0 25px 50px rgba(0,0,0,0.2)', overflow: 'hidden', animation: 'fadeIn 0.2s ease-out' }}>
+        {/* Header */}
+        <div style={{ background: 'linear-gradient(135deg, #0076a3, #005f8a)', padding: '18px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: '8px', padding: '8px', display: 'flex' }}>
+              <Landmark size={20} color="#fff" />
+            </div>
+            <div>
+              <p style={{ color: '#fff', fontWeight: '700', fontSize: '16px', margin: 0 }}>
+                {isEdit ? 'Edit Bank Details' : 'Add Bank Details'}
+              </p>
+              <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px', margin: 0 }}>
+                {isEdit ? 'Update member refund and tax settlement banking information' : 'Enter new bank account information for member'}
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} type="button" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', opacity: 0.85, padding: '4px' }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} style={{ padding: '20px' }}>
+          {success && (
+            <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#047857', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '16px' }}>
+              <CheckCircle size={16} style={{ flexShrink: 0 }} /> {success}
+            </div>
+          )}
+          {error && (
+            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', marginBottom: '16px' }}>
+              ⚠️ {error}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {/* Account Number */}
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '5px' }}>
+                1. Account Number <span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <input
+                type="text"
+                value={accountNumber}
+                onChange={e => setAccountNumber(e.target.value)}
+                placeholder="Enter Account Number (e.g. 1234567890)"
+                style={{
+                  width: '100%', padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '6px',
+                  fontSize: '13px', color: '#0f172a', outline: 'none', boxSizing: 'border-box', fontFamily: 'monospace'
+                }}
+              />
+            </div>
+
+            {/* Bank Name */}
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '5px' }}>
+                2. Bank Name <span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <input
+                type="text"
+                value={bankName}
+                onChange={e => setBankName(e.target.value)}
+                placeholder="Enter Bank Name (e.g. JPMorgan Chase Bank, Bank of America)"
+                style={{
+                  width: '100%', padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '6px',
+                  fontSize: '13px', color: '#0f172a', outline: 'none', boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            {/* Account Holder Name */}
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '5px' }}>
+                3. Account Holder Name <span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <input
+                type="text"
+                value={accountHolderName}
+                onChange={e => setAccountHolderName(e.target.value)}
+                placeholder="Enter Account Holder Name (e.g. John Doe)"
+                style={{
+                  width: '100%', padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '6px',
+                  fontSize: '13px', color: '#0f172a', outline: 'none', boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            {/* Routing Number */}
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '5px' }}>
+                4. Routing Number <span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <input
+                type="text"
+                value={routingNumber}
+                onChange={e => setRoutingNumber(e.target.value)}
+                placeholder="Enter 9-digit Routing Number (e.g. 021000021)"
+                style={{
+                  width: '100%', padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '6px',
+                  fontSize: '13px', color: '#0f172a', outline: 'none', boxSizing: 'border-box', fontFamily: 'monospace'
+                }}
+              />
+            </div>
+
+            {/* Type of Account (Radio selecting option) */}
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '8px' }}>
+                5. Type of Account <span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <label style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '10px 14px', borderRadius: '8px', cursor: 'pointer',
+                  border: accountType === 'Checking Account' ? '2px solid #0076a3' : '1px solid #cbd5e1',
+                  background: accountType === 'Checking Account' ? '#f0f9ff' : '#fff',
+                  transition: 'all 0.15s ease'
+                }}>
+                  <input
+                    type="radio"
+                    name="accountType"
+                    value="Checking Account"
+                    checked={accountType === 'Checking Account'}
+                    onChange={() => setAccountType('Checking Account')}
+                    style={{ accentColor: '#0076a3', cursor: 'pointer', width: '16px', height: '16px' }}
+                  />
+                  <div>
+                    <span style={{ fontSize: '13px', fontWeight: '600', color: '#0f172a', display: 'block' }}>Checking Account</span>
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>Standard transactional account</span>
+                  </div>
+                </label>
+
+                <label style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '10px 14px', borderRadius: '8px', cursor: 'pointer',
+                  border: accountType === 'Saving Account' ? '2px solid #0076a3' : '1px solid #cbd5e1',
+                  background: accountType === 'Saving Account' ? '#f0f9ff' : '#fff',
+                  transition: 'all 0.15s ease'
+                }}>
+                  <input
+                    type="radio"
+                    name="accountType"
+                    value="Saving Account"
+                    checked={accountType === 'Saving Account'}
+                    onChange={() => setAccountType('Saving Account')}
+                    style={{ accentColor: '#0076a3', cursor: 'pointer', width: '16px', height: '16px' }}
+                  />
+                  <div>
+                    <span style={{ fontSize: '13px', fontWeight: '600', color: '#0f172a', display: 'block' }}>Saving Account</span>
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>Savings deposit account</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Buttons */}
+          <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              style={{
+                padding: '9px 18px', border: '1px solid #cbd5e1', borderRadius: '6px',
+                background: '#fff', color: '#475569', fontSize: '13px', fontWeight: '500', cursor: 'pointer'
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              style={{
+                padding: '9px 20px', border: 'none', borderRadius: '6px',
+                background: '#0076a3', color: '#fff', fontSize: '13px', fontWeight: '600',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
+                opacity: saving ? 0.7 : 1, boxShadow: '0 2px 4px rgba(0,118,163,0.2)'
+              }}
+            >
+              {saving ? <Loader2 size={16} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} /> : null}
+              {saving ? (isEdit ? 'Updating...' : 'Adding...') : (isEdit ? 'Update Bank Details' : 'Save Bank Details')}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
    Detail View — Full page view with 10-tab ribbon
    Note: SSN unmasking does NOT require OTP per user instruction.
 ───────────────────────────────────────────────────────────── */
 const DETAIL_TABS = [
-  { id: 'personal', label: 'Personal Info' },
-  { id: 'spouse', label: 'Spouse Info' },
-  { id: 'dependent', label: 'Dependent Info' },
-  { id: 'bank', label: 'Bank Details' },
-  { id: 'address', label: 'Address' },
-  { id: 'download', label: 'Download' },
-  { id: 'interview', label: 'Interview' },
-  { id: 'pay', label: 'Pay' },
-  { id: 'upload', label: 'Upload' },
-  { id: 'fileInfo', label: 'File Info' },
+  { id: 'personal',  label: 'Personal Info',   icon: User },
+  { id: 'spouse',    label: 'Spouse Info',      icon: Users },
+  { id: 'dependent', label: 'Dependent Info',  icon: UserCheck },
+  { id: 'bank',      label: 'Bank Details',    icon: Landmark },
+  { id: 'address',   label: 'Address',         icon: MapPin },
+  { id: 'download',  label: 'Download',        icon: FileDown },
+  { id: 'interview', label: 'Interview',       icon: MessageSquare },
+  { id: 'pay',       label: 'Pay',             icon: CreditCard },
+  { id: 'upload',    label: 'Upload',          icon: UploadCloud },
+  { id: 'fileInfo',  label: 'File Info',       icon: FileText },
 ];
 
 const statusColor = (s = '') => {
@@ -214,13 +478,319 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
   const [activeTab, setActiveTab] = useState('personal');
   const [unmasked, setUnmasked] = useState({});
   const [otpOpen, setOtpOpen] = useState(false);
+  const [bankModalOpen, setBankModalOpen] = useState(false);
   const [pendingEmailKey, setPendingEmailKey] = useState(null);
   const [commentText, setCommentText] = useState('');
   const [commentStatus, setCommentStatus] = useState(member.status);
+  const [fileTypeInput, setFileTypeInput] = useState('E-Filing');
+  const [statusInput, setStatusInput] = useState(member.status || 'EFA_FC');
 
   // Profile API State
   const [profileData, setProfileData] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
+
+  // Document Upload State
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadDocName, setUploadDocName] = useState('');
+  const [uploadDocTypeId, setUploadDocTypeId] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [uploadSuccess, setUploadSuccess] = useState('');
+  const fileInputRef = useRef(null);
+  
+  // Track admin-uploaded document IDs to persist the flag even after re-fetch
+  const [adminUploadedDocIds, setAdminUploadedDocIds] = useState(new Set());
+
+  // Document type mapping (string to ID)
+  const DOC_TYPE_MAP = {
+    'tax_summary': '6a6347ea89dab88326cf8235',
+    'revised_tax_summary': '6a6347ea89dab88326cf8236',
+    'tax_review_copy': '6a6347ea89dab88326cf8237',
+    'filed_return_for_records': '6a6347ea89dab88326cf8238'
+  };
+
+  const handleUploadDocument = async (e) => {
+    e.preventDefault();
+    const userId = member._id || member.sNo;
+    if (!userId) {
+      setUploadError('Member ID is missing.');
+      return;
+    }
+    if (!uploadFile) {
+      setUploadError('Please select a file to upload.');
+      return;
+    }
+    if (!uploadDocTypeId) {
+      setUploadError('Please select a document type.');
+      return;
+    }
+
+    setUploadError('');
+    setUploadSuccess('');
+    setIsUploading(true);
+
+    try {
+      const token = getAuthToken();
+      const formData = new FormData();
+      formData.append('document', uploadFile);
+      
+      // Convert string type to ID if needed
+      const docTypeIdToSend = DOC_TYPE_MAP[uploadDocTypeId] || uploadDocTypeId;
+      formData.append('document_type_id', docTypeIdToSend);
+      formData.append('document_name', uploadDocName.trim() || uploadFile.name);
+
+      const endpoint = `${URLS.UploadDocuments}${userId}`;
+
+      console.log('📤 Uploading document:', {
+        userId,
+        docType: uploadDocTypeId,
+        docTypeId: docTypeIdToSend,
+        fileName: uploadFile.name,
+        docName: uploadDocName.trim() || uploadFile.name
+      });
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      const result = await res.json();
+
+      console.log('📥 Upload response:', { status: res.status, result });
+
+      if (res.ok && result.success) {
+        setUploadSuccess(result.message || 'Document uploaded successfully.');
+        setTimeout(() => {
+          setUploadSuccess('');
+        }, 4000);
+        
+        if (result.data) {
+          const newUploadedDoc = {
+            ...result.data,
+            new_docs: true,
+            isAdminUploaded: true
+          };
+          setProfileData(prev => ({
+            ...prev,
+            documents: [newUploadedDoc, ...(prev?.documents || [])]
+          }));
+        }
+
+        setUploadFile(null);
+        setUploadDocName('');
+        setUploadDocTypeId('');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      } else {
+        const errorMsg = result.message || result.error || `Failed to upload document (${res.status})`;
+        setUploadError(errorMsg);
+        console.error('❌ Upload error:', { status: res.status, result });
+      }
+    } catch (err) {
+      console.error('❌ Upload document error:', err);
+      setUploadError(err.message || 'Network error occurred during upload.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  useEffect(() => {
+    const validFileTypes = ['E-Filing', 'Paper-Filing'];
+    let defaultFileType = member.filingType || 'E-Filing';
+    if (!validFileTypes.includes(defaultFileType)) {
+      defaultFileType = 'E-Filing';
+    }
+    setFileTypeInput(defaultFileType);
+    setStatusInput(member.status || 'EFA_FC');
+  }, [member]);
+
+  const handleDeleteDoc = (docId) => {
+    if (!window.confirm('Are you sure you want to delete this document?')) return;
+    setProfileData(prev => ({
+      ...prev,
+      documents: (prev?.documents || []).filter(d => (d._id || d.id) !== docId)
+    }));
+  };
+
+  // File Info (Member Status) State & API Handlers
+  const [statusHistory, setStatusHistory] = useState([]);
+  const [currentFileInfo, setCurrentFileInfo] = useState(null);
+  const [loadingFileInfo, setLoadingFileInfo] = useState(false);
+  const [isSubmittingFileInfo, setIsSubmittingFileInfo] = useState(false);
+  const [fileInfoSuccessMsg, setFileInfoSuccessMsg] = useState('');
+  const [fileInfoErrorMsg, setFileInfoErrorMsg] = useState('');
+  
+  // const [fileTypeInput, setFileTypeInput] = useState(member.filingType || 'E-Filing');
+  // const [statusInput, setStatusInput] = useState(member.status || 'EFA_FC');
+  const [commentsInput, setCommentsInput] = useState('');
+
+  // Status name to code mapping
+  const STATUS_CODE_MAP = {
+    'Registered Users': 'RU',
+    'Scheduling Pending': 'SP',
+    'Information Pending': 'IP',
+    'Interview Pending': 'INP',
+    'Documents Pending': 'DP',
+    'Preparation - 1': 'PREP1',
+    'Preparation - 2': 'PREP2',
+    'Review & Summary 1': 'RS1',
+    'Review & Summary 2': 'RS2',
+    'ITIN Files': 'ITIN',
+    'Revised Estimate': 'RE',
+    'Payment Pending - Efiling': 'PPE',
+    'Payment Pending - Paper filing': 'PPP',
+    'Fee Payment Received - I': 'FPR1',
+    'Fee Payment Received - II': 'FPR2',
+    'Client Review - Efiling': 'CRE',
+    'Client Review - Paper Filing': 'CRP',
+    'Efiling Pending - 1': 'EP1',
+    'Efiling Pending - 2': 'EP2',
+    'E - Filed & Awaiting Acceptance - 1': 'EFA1',
+    'E - Filed & Awaiting Acceptance - 2': 'EFA2',
+    'E - Filed & Rejected': 'EFR',
+    'City Return': 'CR',
+    'E-Filing Accepted & Filing Complete': 'EFA_FC',
+    'Paper Filing Pending': 'PFP',
+    'Paper Filing Done': 'PFD',
+    'Cancelled': 'CAN'
+  };
+
+  const fetchFileInfoHistory = async () => {
+    const memberId = member._id || member.sNo;
+    if (!memberId) return;
+    setLoadingFileInfo(true);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`${URLS.GetFileInfo}${memberId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (res.ok) {
+        const result = await res.json();
+        console.log('📥 Fetched File Info History:', result);
+        
+        if (result.success) {
+          if (Array.isArray(result.history)) {
+            // Sort by creation date, newest first
+            const sortedHistory = result.history.sort((a, b) => {
+              const dateA = new Date(a.createdAt || a.dateTime || 0);
+              const dateB = new Date(b.createdAt || b.dateTime || 0);
+              return dateB - dateA; // Newest first
+            });
+            setStatusHistory(sortedHistory);
+            console.log('✅ Status history updated:', sortedHistory.length, 'entries');
+          } else {
+            setStatusHistory([]);
+          }
+          if (result.currentStatus) {
+            setCurrentFileInfo(result.currentStatus);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ Fetch File Info history warning:', err);
+    } finally {
+      setLoadingFileInfo(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'fileInfo' || member) {
+      fetchFileInfoHistory();
+    }
+  }, [member, activeTab]);
+
+  const handleCreateFileInfoStatus = async (e) => {
+    e.preventDefault();
+    const memberId = member._id || member.sNo;
+    if (!memberId) {
+      setFileInfoErrorMsg('Member ID is missing.');
+      return;
+    }
+    if (!commentsInput.trim()) {
+      setFileInfoErrorMsg('Please enter comments.');
+      return;
+    }
+
+    setFileInfoErrorMsg('');
+    setFileInfoSuccessMsg('');
+    setIsSubmittingFileInfo(true);
+
+    try {
+      const token = getAuthToken();
+      
+      // Convert status name to code before sending
+      const statusCode = STATUS_CODE_MAP[statusInput] || statusInput;
+      
+      const payload = {
+        file_type: fileTypeInput || member.filingType || '',
+        status: statusCode, // Send status code instead of name
+        comments: commentsInput.trim()
+      };
+
+      console.log('📤 Submitting File Info:', {
+        memberId,
+        statusName: statusInput,
+        statusCode: statusCode,
+        payload
+      });
+
+      const res = await fetch(`${URLS.CreateFileInfo}${memberId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await res.json();
+
+      console.log('📥 API Response:', { status: res.status, result });
+
+      if (res.ok && result.success) {
+        setFileInfoSuccessMsg(result.message || 'Member status updated successfully.');
+        setTimeout(() => setFileInfoSuccessMsg(''), 4000);
+        setCommentsInput('');
+        
+        // If the API returns the new status entry, add it to the list immediately
+        if (result.data) {
+          const newEntry = {
+            ...result.data,
+            _id: result.data._id || result.data.id || Date.now(),
+            file_type: fileTypeInput,
+            status: statusInput, // Keep the name for display
+            status_name: statusInput,
+            comments: commentsInput,
+            createdBy: result.data.createdBy || 'Admin',
+            createdAt: result.data.createdAt || new Date().toISOString()
+          };
+          
+          // Add to the beginning of the list (newest first)
+          setStatusHistory(prev => [newEntry, ...prev]);
+          console.log('✅ Added new entry to history (optimistic update)');
+        }
+        
+        // Also refresh the complete history from the server
+        console.log('🔄 Refreshing complete status history...');
+        setTimeout(() => fetchFileInfoHistory(), 500); // Small delay to ensure DB is updated
+      } else {
+        const errorMsg = result.message || result.error || `Failed to update member status (${res.status})`;
+        setFileInfoErrorMsg(errorMsg);
+        console.error('❌ API Error:', { status: res.status, result });
+      }
+    } catch (err) {
+      console.error('❌ Create member status error:', err);
+      setFileInfoErrorMsg(err.message || 'Network error occurred.');
+    } finally {
+      setIsSubmittingFileInfo(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -240,7 +810,23 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
         if (res.ok) {
           const result = await res.json();
           if (isMounted && result.success && result.data) {
-            setProfileData(result.data);
+            // Mark documents as admin-uploaded if they have the flag from backend
+            const processedData = {
+              ...result.data,
+              documents: Array.isArray(result.data.documents) 
+                ? result.data.documents.map(doc => ({
+                    ...doc,
+                    // Mark as admin upload if backend indicates it, or if it has new_docs flag
+                    isAdminUploaded: doc.isAdminUploaded || doc.new_docs || doc.uploaded_by_admin || doc.admin_upload || false
+                  }))
+                : []
+            };
+            
+            console.log('📥 Fetched member profile, documents:', processedData.documents.length);
+            console.log('📊 Admin docs:', processedData.documents.filter(d => d.isAdminUploaded).length);
+            console.log('📊 Member docs:', processedData.documents.filter(d => !d.isAdminUploaded).length);
+            
+            setProfileData(processedData);
           }
         }
       } catch (err) {
@@ -258,26 +844,86 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
     { status: member.status, comments: 'Initial registration processed.', dateTime: member.regDate }
   ];
 
-  // SSN / Contact toggles directly without OTP! Email triggers OTP API!
-  const handleToggleField = (key, isEmail = false) => {
+  const handleSaveBankDetails = async (formData) => {
+    const memberId = member._id || member.sNo;
+    const hasBank = Boolean(profileData?.bankDetails && Object.keys(profileData.bankDetails).length > 0 && (profileData.bankDetails.account_number || profileData.bankDetails.bank_name));
+    
+    const token = getAuthToken();
+    const payload = {
+      member_id: memberId,
+      memberId: memberId,
+      account_number: formData.account_number,
+      bank_name: formData.bank_name,
+      account_holder_name: formData.account_holder_name,
+      account_holder: formData.account_holder_name,
+      routing_number: formData.routing_number,
+      account_type: formData.account_type,
+    };
+
+    const endpoint = hasBank ? URLS.UpdateBankDetails : URLS.CreateBankDetails;
+
+    try {
+      let res = await fetch(`${endpoint}${memberId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+      }
+    } catch (err) {
+      console.warn('Bank Details API network notice:', err);
+    }
+
+    setProfileData(prev => ({
+      ...prev,
+      bankDetails: {
+        ...(prev?.bankDetails || {}),
+        bank_name: formData.bank_name,
+        account_number: formData.account_number,
+        account_holder_name: formData.account_holder_name,
+        account_holder: formData.account_holder_name,
+        routing_number: formData.routing_number,
+        account_type: formData.account_type,
+        updatedAt: new Date().toISOString(),
+        createdAt: prev?.bankDetails?.createdAt || new Date().toISOString(),
+      }
+    }));
+  };
+
+  const [otpFieldLabel, setOtpFieldLabel] = useState('Email Address');
+  const [otpType, setOtpType] = useState('email'); // 'email' or 'contact'
+
+  // Contact Number & Email require OTP verification!
+  const handleToggleField = (key, requiresOtp = false, label = 'Email Address', isContact = false) => {
     if (unmasked[key]) {
       setUnmasked(prev => ({ ...prev, [key]: false }));
-    } else if (isEmail) {
-      // Open OTP modal immediately without waiting for API call!
+    } else if (requiresOtp) {
       setPendingEmailKey(key);
+      setOtpFieldLabel(label);
+      setOtpType(isContact ? 'contact' : 'email');
       setOtpOpen(true);
       if (onSendEmailOtp) {
-        onSendEmailOtp(member._id || member.sNo);
+        onSendEmailOtp(member._id || member.sNo, isContact);
       }
     } else {
-      // Direct unmasking for SSN & phone (no OTP required!)
       setUnmasked(prev => ({ ...prev, [key]: true }));
     }
   };
 
   const handleOtpVerify = async (code) => {
     if (onVerifyEmailOtp) {
-      const success = await onVerifyEmailOtp(member._id || member.sNo, code);
+      const success = await onVerifyEmailOtp(member._id || member.sNo, code, otpType);
       if (success) {
         if (pendingEmailKey) setUnmasked(prev => ({ ...prev, [pendingEmailKey]: true }));
         return true;
@@ -313,24 +959,29 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
             {profileData?.header ? `${profileData.header.first_name || ''} ${profileData.header.last_name || ''}`.trim() : member.name}
           </strong>
           &nbsp;|&nbsp; File No: <strong>{profileData?.header?.file_no || member.fileNo}</strong>
-          &nbsp;|&nbsp; {profileData?.header?.tin_type || profileData?.header?.file_type || member.filingType}
+          &nbsp;|&nbsp; {profileData?.header?.file_type || profileData?.header?.file_type || member.filingType}
           &nbsp;|&nbsp; <span style={{ color: statusColor(profileData?.header?.filestatus || member.status), fontWeight: 600 }}>{profileData?.header?.filestatus || member.status}</span>
         </div>
 
         {/* 10-Tab Ribbon */}
         <div className="detail-tabs-row">
-          {DETAIL_TABS.map(tab => (
-            <button
-              key={tab.id}
-              className={`detail-tab-btn ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab(tab.id);
-                if (tab.id === 'fileInfo') setCommentStatus(member.status);
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {DETAIL_TABS.map(tab => {
+            const TabIcon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                className={`detail-tab-btn ${activeTab === tab.id ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  if (tab.id === 'fileInfo') setCommentStatus(member.status);
+                }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+              >
+                {TabIcon && <TabIcon size={13} />}
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Tab Panels */}
@@ -346,27 +997,24 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
                 </div>
               ) : (
                 <>
-                  {!profileData?.personalInfo && (
-                    <div style={{ marginBottom: '12px', padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '4px', fontSize: '12px', color: '#1e40af' }}>
-                      ℹ Showing registered member account details (Extended profile form not yet submitted by member).
-                    </div>
-                  )}
                   <table className="corporate-table detail-card-table">
-                    <thead><tr><th colSpan="2" style={{ textAlign: 'left' }}>PERSONAL DETAILS</th></tr></thead>
+                    <thead><tr><th colSpan="2" style={{ textAlign: 'left' }}>
+                      <User size={16} style={{ marginRight: '6px' }} />
+                      PERSONAL DETAILS</th></tr></thead>
                     <tbody>
                       {[
                         { label: 'FIRST NAME', value: profileData?.personalInfo?.first_name || member.raw?.first_name || member.name?.split(' ')[0] || '—' },
                         { label: 'MIDDLE NAME', value: profileData?.personalInfo?.middle_name || '—' },
                         { label: 'LAST NAME', value: profileData?.personalInfo?.last_name || member.raw?.last_name || member.name?.split(' ').slice(1).join(' ') || '—' },
-                        { label: 'CONTACT NUMBER', value: profileData?.personalInfo?.contact_number || member.raw?.contact_number || '—', masked: true, isEmail: false, key: `${member._id || member.sNo}_phone` },
+                        { label: 'CONTACT NUMBER', value: profileData?.personalInfo?.contact_number || member.raw?.contact_number || '—', masked: true, requiresOtp: true, isPhone: true, isContact: true, key: `${member._id || member.sNo}_phone` },
                         { label: 'ALTERNATE NUMBER', value: profileData?.personalInfo?.alternate_number || member.raw?.alter_number || '—' },
                         { label: 'TIME ZONE', value: profileData?.personalInfo?.timezone || member.raw?.time_zone || '—' },
-                        { label: 'SSN / TIN TYPE', value: profileData?.personalInfo?.ssn_tin || member.raw?.tin_type || member.filingType || '—', masked: true, isEmail: false, key: `${member._id || member.sNo}_ssn` },
+                        { label: 'SSN / TIN TYPE', value: profileData?.personalInfo?.ssn_tin || member.raw?.file_type || member.filingType || '—' },
                         { label: 'DATE OF BIRTH', value: profileData?.personalInfo?.date_of_birth ? new Date(profileData.personalInfo.date_of_birth).toLocaleDateString() : '—' },
                         { label: 'OCCUPATION', value: profileData?.personalInfo?.occupation || '—' },
                         { label: 'GENDER', value: profileData?.personalInfo?.gender || '—' },
                         { label: 'VISA TYPE', value: profileData?.personalInfo?.visa_type || '—' },
-                        { label: 'EMAIL', value: profileData?.personalInfo?.email || member.raw?.email || member.email || '—', masked: true, isEmail: true, key: `${member._id || member.sNo}_email_detail` },
+                        { label: 'EMAIL', value: profileData?.personalInfo?.email || member.raw?.email || member.email || '—', masked: true, requiresOtp: true, isEmail: true, key: `${member._id || member.sNo}_email_detail` },
                         { label: 'MAILING ADDRESS', value: profileData?.personalInfo?.mailing_address || '—' },
                         { label: 'CITY', value: profileData?.personalInfo?.city || '—' },
                         { label: 'STATE', value: profileData?.personalInfo?.state || '—' },
@@ -381,10 +1029,10 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
                             <td style={{ width: '30%', fontWeight: '600', color: 'var(--text-muted)' }}>{row.label}</td>
                             <td>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span>{unmasked[row.key] ? row.value : (row.isEmail ? 'XXXXXXXXX.COM' : 'XXX-XX-XXXX')}</span>
+                                <span>{unmasked[row.key] ? row.value : (row.isEmail ? 'XXXXXXXXX.COM' : 'XXXXXXXXXX')}</span>
                                 <button
                                   className="email-toggle-eye-btn"
-                                  onClick={() => handleToggleField(row.key, row.isEmail)}
+                                  onClick={() => handleToggleField(row.key, row.requiresOtp, row.label, row.isContact)}
                                   title={unmasked[row.key] ? 'Mask Field' : 'Reveal Field'}
                                 >
                                   {unmasked[row.key] ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -416,7 +1064,9 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
                 </div>
               ) : profileData?.spouseInfo && Object.keys(profileData.spouseInfo).length > 0 ? (
                 <table className="corporate-table detail-card-table">
-                  <thead><tr><th colSpan="2" style={{ textAlign: 'left' }}>SPOUSE DETAILS</th></tr></thead>
+                  <thead><tr><th colSpan="2" style={{ textAlign: 'left' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}>
+                    <span style={{ background: '#ede9fe', color: '#7c3aed', padding: '6px', borderRadius: '6px', display: 'inline-flex' }}>
+                      <Users size={16} /></span>SPOUSE DETAILS</span></th></tr></thead>
                   <tbody>
                     {[
                       ['FIRST NAME', profileData.spouseInfo.first_name],
@@ -454,7 +1104,17 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
 
           {/* ── Dependent Info ── */}
           {activeTab === 'dependent' && (
-            <div className="table-responsive">
+            <div style={{ border: '1px solid var(--border-light)', padding: '20px', borderRadius: 'var(--radius-sm)', background: '#fff' }}>
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ background: '#dcfce7', color: '#16a34a', padding: '9px', borderRadius: '8px', display: 'flex' }}>
+                  <UserCheck size={20} />
+                </div>
+                <div>
+                  <h4 style={{ fontWeight: 'bold', margin: 0, fontSize: '15px', color: '#0f172a' }}>Dependent Information</h4>
+                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>Dependent family members on tax return</p>
+                </div>
+              </div>
               {loadingProfile ? (
                 <div style={{ padding: '15px', textAlign: 'center', color: '#0076a3', fontSize: '13px', fontWeight: '600' }}>
                   <Loader2 size={18} className="animate-spin" style={{ display: 'inline', marginRight: '6px' }} />
@@ -466,7 +1126,7 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
                   : (profileData?.dependentInfo ? [profileData.dependentInfo] : []);
 
                 return deps.length > 0 ? (
-                  <table className="corporate-table">
+                  <div className="table-responsive"><table className="corporate-table">
                     <thead>
                       <tr>
                         <th>S.NO</th>
@@ -503,7 +1163,7 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </table></div>
                 ) : (
                   <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
                     <p style={{ margin: 0, fontWeight: '600', fontSize: '13px' }}>No dependent details submitted yet</p>
@@ -517,36 +1177,140 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
           {/* ── Bank Details ── */}
           {activeTab === 'bank' && (
             <div style={{ border: '1px solid var(--border-light)', padding: '20px', borderRadius: 'var(--radius-sm)', background: '#fff' }}>
-              <h4 style={{ fontWeight: 'bold', marginBottom: '16px', fontSize: '14px' }}>Bank Account Details</h4>
+              {/* Header with Title & Top-Right Action Button */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '14px', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ background: '#e0f2fe', color: '#0284c7', padding: '9px', borderRadius: '8px', display: 'flex' }}>
+                    <Landmark size={20} />
+                  </div>
+                  <div>
+                    <h4 style={{ fontWeight: 'bold', margin: 0, fontSize: '15px', color: '#0f172a' }}>Bank Account Details</h4>
+                    <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>Member tax refund and direct deposit information</p>
+                  </div>
+                </div>
+
+                {/* Top Right Button */}
+                {profileData?.bankDetails && Object.keys(profileData.bankDetails).length > 0 && (profileData.bankDetails.account_number || profileData.bankDetails.bank_name) ? (
+                  <button
+                    onClick={() => setBankModalOpen(true)}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      padding: '8px 16px', borderRadius: '6px',
+                      background: '#0076a3', border: 'none', color: '#fff',
+                      fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                      boxShadow: '0 2px 4px rgba(0,118,163,0.2)',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <Edit3 size={15} /> Edit Bank Details
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setBankModalOpen(true)}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      padding: '8px 16px', borderRadius: '6px',
+                      background: '#0076a3', border: 'none', color: '#fff',
+                      fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                      boxShadow: '0 2px 4px rgba(0,118,163,0.2)',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <Plus size={15} /> Add Bank Details
+                  </button>
+                )}
+              </div>
+
               {loadingProfile ? (
-                <div style={{ padding: '15px', textAlign: 'center', color: '#0076a3', fontSize: '13px', fontWeight: '600' }}>
-                  <Loader2 size={18} className="animate-spin" style={{ display: 'inline', marginRight: '6px' }} />
+                <div style={{ padding: '30px', textAlign: 'center', color: '#0076a3', fontSize: '13px', fontWeight: '600' }}>
+                  <Loader2 size={22} className="animate-spin" style={{ display: 'inline', marginRight: '8px' }} />
                   Loading bank details...
                 </div>
-              ) : profileData?.bankDetails && Object.keys(profileData.bankDetails).length > 0 ? (
+              ) : profileData?.bankDetails && Object.keys(profileData.bankDetails).length > 0 && (profileData.bankDetails.account_number || profileData.bankDetails.bank_name) ? (
                 <div className="table-responsive">
                   <table className="corporate-table">
                     <tbody>
-                      {[
-                        ['Bank Name', profileData.bankDetails.bank_name],
-                        ['Account Number', profileData.bankDetails.account_number],
-                        ['Routing Number', profileData.bankDetails.routing_number],
-                        ['Account Type', profileData.bankDetails.account_type],
-                        ['Created At', profileData.bankDetails.createdAt ? new Date(profileData.bankDetails.createdAt).toLocaleString() : ''],
-                        ['Updated At', profileData.bankDetails.updatedAt ? new Date(profileData.bankDetails.updatedAt).toLocaleString() : ''],
-                      ].map(([l, v], i) => (
-                        <tr key={i}>
-                          <td style={{ fontWeight: 'bold', width: '25%', color: 'var(--text-muted)' }}>{l}</td>
-                          <td>{v || '—'}</td>
+                      <tr>
+                        <td style={{ fontWeight: 'bold', width: '30%', color: 'var(--text-muted)' }}>Account Number</td>
+                        <td style={{ fontFamily: 'monospace', fontSize: '14px', fontWeight: '600', color: '#0f172a', letterSpacing: '0.5px' }}>
+                          {profileData.bankDetails.account_number || profileData.bankDetails.accountNumber || '—'}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>Bank Name</td>
+                        <td style={{ fontWeight: '600', color: '#0f172a' }}>
+                          {profileData.bankDetails.bank_name || profileData.bankDetails.bankName || '—'}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>Account Holder Name</td>
+                        <td style={{ fontWeight: '600', color: '#0f172a' }}>
+                          {profileData.bankDetails.account_holder_name || profileData.bankDetails.account_holder || profileData.bankDetails.accountHolderName || (profileData?.personalInfo ? `${profileData.personalInfo.first_name || ''} ${profileData.personalInfo.last_name || ''}`.trim() : member.name) || '—'}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>Routing Number</td>
+                        <td style={{ fontFamily: 'monospace', fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>
+                          {profileData.bankDetails.routing_number || profileData.bankDetails.routingNumber || '—'}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>Account Type</td>
+                        <td>
+                          {profileData.bankDetails.account_type || profileData.bankDetails.accountType ? (
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '4px 12px',
+                              borderRadius: '20px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              background: (profileData.bankDetails.account_type || profileData.bankDetails.accountType || '').toLowerCase().includes('checking') ? '#e0f2fe' : '#f0fdf4',
+                              color: (profileData.bankDetails.account_type || profileData.bankDetails.accountType || '').toLowerCase().includes('checking') ? '#0369a1' : '#15803d',
+                              border: (profileData.bankDetails.account_type || profileData.bankDetails.accountType || '').toLowerCase().includes('checking') ? '1px solid #bae6fd' : '1px solid #bbf7d0'
+                            }}>
+                              {profileData.bankDetails.account_type || profileData.bankDetails.accountType}
+                            </span>
+                          ) : '—'}
+                        </td>
+                      </tr>
+                      {profileData.bankDetails.createdAt && (
+                        <tr>
+                          <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>Created At</td>
+                          <td style={{ color: '#64748b', fontSize: '12px' }}>
+                            {new Date(profileData.bankDetails.createdAt).toLocaleString()}
+                          </td>
                         </tr>
-                      ))}
+                      )}
+                      {profileData.bankDetails.updatedAt && (
+                        <tr>
+                          <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>Updated At</td>
+                          <td style={{ color: '#64748b', fontSize: '12px' }}>
+                            {new Date(profileData.bankDetails.updatedAt).toLocaleString()}
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
               ) : (
-                <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                  <p style={{ margin: 0, fontWeight: '600', fontSize: '13px' }}>No bank account details submitted yet</p>
-                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94a3b8' }}>Bank account information will appear once filled by the member.</p>
+                <div style={{ padding: '36px 20px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                  <div style={{ background: '#f1f5f9', width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                    <Landmark size={24} color="#94a3b8" />
+                  </div>
+                  <p style={{ margin: 0, fontWeight: '600', fontSize: '14px', color: '#334155' }}>No bank account details submitted yet</p>
+                  <p style={{ margin: '6px 0 16px', fontSize: '12px', color: '#64748b' }}>Bank account information is required for direct deposit refund or tax settlements.</p>
+                  <button
+                    onClick={() => setBankModalOpen(true)}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      padding: '8px 18px', borderRadius: '6px',
+                      background: '#0076a3', border: 'none', color: '#fff',
+                      fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                      boxShadow: '0 2px 4px rgba(0,118,163,0.2)'
+                    }}
+                  >
+                    <Plus size={15} /> Add Bank Details
+                  </button>
                 </div>
               )}
             </div>
@@ -555,7 +1319,15 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
           {/* ── Address ── */}
           {activeTab === 'address' && (
             <div style={{ border: '1px solid var(--border-light)', padding: '20px', borderRadius: 'var(--radius-sm)', background: '#fff' }}>
-              <h4 style={{ fontWeight: 'bold', marginBottom: '16px', fontSize: '14px' }}>Member Address Records</h4>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ background: '#fef9c3', color: '#ca8a04', padding: '9px', borderRadius: '8px', display: 'flex' }}>
+                  <MapPin size={20} />
+                </div>
+                <div>
+                  <h4 style={{ fontWeight: 'bold', margin: 0, fontSize: '15px', color: '#0f172a' }}>Member Address Records</h4>
+                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>State-wise address history for tax year</p>
+                </div>
+              </div>
               {loadingProfile ? (
                 <div style={{ padding: '15px', textAlign: 'center', color: '#0076a3', fontSize: '13px', fontWeight: '600' }}>
                   <Loader2 size={18} className="animate-spin" style={{ display: 'inline', marginRight: '6px' }} />
@@ -610,56 +1382,165 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
           {/* ── Download ── */}
           {activeTab === 'download' && (
             <div style={{ border: '1px solid var(--border-light)', padding: '20px', borderRadius: 'var(--radius-sm)', background: '#fff' }}>
-              <h4 style={{ fontWeight: 'bold', marginBottom: '12px', fontSize: '14px' }}>Available Client Documents</h4>
-              <div className="table-responsive">
-                <table className="corporate-table">
-                  <thead><tr><th>Document Name</th><th>Category</th><th>Uploaded Date</th><th>Action</th></tr></thead>
-                  <tbody>
-                    {[
-                      ['Form_1040_Draft_v1.pdf', 'Tax Returns', '2026-06-11'],
-                      ['W2_Employer_Copy.pdf', 'Income Source', '2026-06-05'],
-                      ['Passport_DriverLicense.pdf', 'Identity Verification', '2026-06-05'],
-                    ].map(([name, cat, date], i) => (
-                      <tr key={i}>
-                        <td>{name}</td><td>{cat}</td><td>{date}</td>
-                        <td><button className="btn-view-action" style={{ padding: '4px 8px', fontSize: '12px' }}
-                          onClick={() => alert(`Downloading ${name}…`)}>Download</button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ background: '#e0f2fe', color: '#0284c7', padding: '9px', borderRadius: '8px', display: 'flex' }}>
+                  <FileDown size={20} />
+                </div>
+                <div>
+                  <h4 style={{ fontWeight: 'bold', margin: 0, fontSize: '15px', color: '#0f172a' }}>Member Uploaded Documents</h4>
+                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>Documents uploaded by the member/client</p>
+                </div>
               </div>
+              {loadingProfile ? (
+                <div style={{ padding: '15px', textAlign: 'center', color: '#0076a3', fontSize: '13px', fontWeight: '600' }}>
+                  <Loader2 size={18} className="animate-spin" style={{ display: 'inline', marginRight: '6px' }} />
+                  Loading documents...
+                </div>
+              ) : (() => {
+                // Filter to show ONLY member/user-uploaded documents (exclude admin uploads)
+                const allDocs = Array.isArray(profileData?.documents) ? profileData.documents : [];
+                const memberDocs = allDocs.filter(doc => {
+                  // Exclude documents that have ANY admin upload indicator
+                  const isAdmin = doc.new_docs || doc.isAdminUploaded || doc.uploaded_by_admin || doc.admin_upload;
+                  return !isAdmin;
+                });
+                
+                console.log('📥 Download tab - All docs:', allDocs.length, '| Member docs:', memberDocs.length, '| Admin docs:', allDocs.length - memberDocs.length);
+                
+                return memberDocs.length > 0 ? (
+                  <div className="table-responsive">
+                    <table className="corporate-table">
+                      <thead>
+                        <tr>
+                          <th>S.NO</th>
+                          <th>DOCUMENT NAME</th>
+                          <th>CATEGORY</th>
+                          <th>FILE SIZE</th>
+                          <th>UPLOADED DATE</th>
+                          <th>ACTION</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {memberDocs.map((doc, i) => {
+                          const docName = doc.original_name || doc.document_name || doc.file_name || 'Document';
+                          const categoryName = doc.document_type?.name || 'Tax Document';
+                          const sizeStr = doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : '—';
+                          const uploadDate = doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : '—';
+                          const fullUrl = doc.file_path ? (doc.file_path.startsWith('http') ? doc.file_path : `${URLS.ImageUrl}${doc.file_path}`) : '#';
+
+                          return (
+                            <tr key={doc._id || i}>
+                              <td>{i + 1}</td>
+                              <td style={{ fontWeight: '600', color: '#0f172a' }}>{docName}</td>
+                              <td>
+                                <span style={{ background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600' }}>
+                                  {categoryName}
+                                </span>
+                              </td>
+                              <td style={{ fontSize: '12px', color: '#64748b' }}>{sizeStr}</td>
+                              <td style={{ fontSize: '12px', color: '#64748b' }}>{uploadDate}</td>
+                              <td>
+                                <a
+                                  href={fullUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn-view-action"
+                                  style={{ padding: '5px 12px', fontSize: '12px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                >
+                                  <Download size={13} /> Download
+                                </a>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                    <p style={{ margin: 0, fontWeight: '600', fontSize: '13px' }}>No member documents available</p>
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94a3b8' }}>Documents uploaded by the member will appear here.</p>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
           {/* ── Interview ── */}
           {activeTab === 'interview' && (
             <div style={{ border: '1px solid var(--border-light)', padding: '20px', borderRadius: 'var(--radius-sm)', background: '#fff' }}>
-              <h4 style={{ fontWeight: 'bold', marginBottom: '12px', fontSize: '14px' }}>Interview Scheduling Info</h4>
-              <div className="table-responsive">
-                <table className="corporate-table">
-                  <tbody>
-                    {[
-                      ['Coordinator', 'Nagasri K.'],
-                      ['Schedule Type', 'Phone Interview (USA)'],
-                      ['Scheduled Time', '2026-06-20 at 10:00 AM EST'],
-                      ['Interview Status', 'Scheduled'],
-                    ].map(([l, v], i) => (
-                      <tr key={i}>
-                        <td style={{ fontWeight: 'bold', width: '25%', color: 'var(--text-muted)' }}>{l}</td>
-                        <td>{i === 3 ? <span style={{ background: '#fff3cd', color: '#856404', padding: '4px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>{v}</span> : v}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ background: '#fce7f3', color: '#be185d', padding: '9px', borderRadius: '8px', display: 'flex' }}>
+                  <MessageSquare size={20} />
+                </div>
+                <div>
+                  <h4 style={{ fontWeight: 'bold', margin: 0, fontSize: '15px', color: '#0f172a' }}>Interview Scheduling Info</h4>
+                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>Consultation date, time slot and status</p>
+                </div>
               </div>
+              {loadingProfile ? (
+                <div style={{ padding: '15px', textAlign: 'center', color: '#0076a3', fontSize: '13px', fontWeight: '600' }}>
+                  <Loader2 size={18} className="animate-spin" style={{ display: 'inline', marginRight: '6px' }} />
+                  Loading interview details...
+                </div>
+              ) : profileData?.interview && Object.keys(profileData.interview).length > 0 ? (
+                <div className="table-responsive">
+                  <table className="corporate-table">
+                    <tbody>
+                      <tr>
+                        <td style={{ fontWeight: 'bold', width: '30%', color: 'var(--text-muted)' }}>Consultation Date</td>
+                        <td style={{ fontWeight: '600', color: '#0f172a' }}>
+                          {profileData.interview.consultation_date ? new Date(profileData.interview.consultation_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>Time Slot</td>
+                        <td style={{ fontWeight: '600', color: '#0f172a' }}>
+                          {profileData.interview.time_slot?.slot || '—'}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>Interview Status</td>
+                        <td>
+                          {profileData.interview.status ? (
+                            <span style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold' }}>
+                              {profileData.interview.status}
+                            </span>
+                          ) : '—'}
+                        </td>
+                      </tr>
+                      {profileData.interview._id && (
+                        <tr>
+                          <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>Interview Record ID</td>
+                          <td style={{ fontFamily: 'monospace', fontSize: '12px', color: '#64748b' }}>
+                            {profileData.interview._id}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                  <p style={{ margin: 0, fontWeight: '600', fontSize: '13px' }}>No interview scheduled yet</p>
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94a3b8' }}>Consultation details will appear once scheduled by the member or admin.</p>
+                </div>
+              )}
             </div>
           )}
 
           {/* ── Pay ── */}
           {activeTab === 'pay' && (
             <div style={{ border: '1px solid var(--border-light)', padding: '20px', borderRadius: 'var(--radius-sm)', background: '#fff' }}>
-              <h4 style={{ fontWeight: 'bold', marginBottom: '12px', fontSize: '14px' }}>Billing & Invoices</h4>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ background: '#dcfce7', color: '#16a34a', padding: '9px', borderRadius: '8px', display: 'flex' }}>
+                  <CreditCard size={20} />
+                </div>
+                <div>
+                  <h4 style={{ fontWeight: 'bold', margin: 0, fontSize: '15px', color: '#0f172a' }}>Billing & Invoices</h4>
+                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>Payment history and invoice details</p>
+                </div>
+              </div>
               <div className="table-responsive">
                 <table className="corporate-table">
                   <thead><tr><th>Invoice No</th><th>Amount</th><th>Payment Status</th><th>Payment Date</th><th>Action</th></tr></thead>
@@ -679,71 +1560,459 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
 
           {/* ── Upload ── */}
           {activeTab === 'upload' && (
-            <div style={{ border: '1px solid var(--border-light)', padding: '20px', borderRadius: 'var(--radius-sm)', background: '#fff', textAlign: 'center' }}>
-              <h4 style={{ fontWeight: 'bold', marginBottom: '12px', textAlign: 'left', fontSize: '14px' }}>Upload Member Document</h4>
-              <div
-                style={{ border: '2px dashed #ccc', padding: '40px 20px', borderRadius: 'var(--radius-sm)', background: '#f9f9f9', cursor: 'pointer' }}
-                onClick={() => alert('File dialog opened.')}
-              >
-                <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-muted)' }}>Drag & Drop files here, or click to select</p>
-                <span style={{ fontSize: '11px', color: '#999' }}>Supported formats: PDF, JPEG, PNG, TIFF (Max: 10MB)</span>
+            <div style={{ border: '1px solid var(--border-light)', padding: '24px', borderRadius: 'var(--radius-sm)', background: '#fff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px', paddingBottom: '14px', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ background: '#fff7ed', color: '#ea580c', padding: '9px', borderRadius: '8px', display: 'flex' }}>
+                  <UploadCloud size={20} />
+                </div>
+                <div>
+                  <h4 style={{ fontWeight: 'bold', margin: 0, fontSize: '15px', color: '#0f172a' }}>Admin Document Upload</h4>
+                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>Upload documents as admin (these won't appear in member's document tab)</p>
+                </div>
               </div>
-            </div>
-          )}
 
-          {/* ── File Info (Comments) ── */}
-          {activeTab === 'fileInfo' && (
-            <div className="file-info-view" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <form onSubmit={handleCommentSubmit} style={{ border: '1px solid var(--border-light)', padding: '20px', borderRadius: 'var(--radius-sm)', background: '#fff' }}>
-                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '16px' }}>
-                  <div style={{ flex: '1', minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 'bold' }}>File No</label>
-                    <input type="text" className="search-input-box" style={{ width: '100%', background: '#e9ecef', cursor: 'not-allowed' }} value={member.fileNo} disabled />
+              {uploadSuccess && (
+                <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#047857', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <CheckCircle size={16} style={{ flexShrink: 0 }} /> {uploadSuccess}
                   </div>
-                  <div style={{ flex: '1', minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Filing Type</label>
-                    <input type="text" className="search-input-box" style={{ width: '100%', background: '#e9ecef', cursor: 'not-allowed' }} value={member.filingType} disabled />
+                  <button onClick={() => setUploadSuccess('')} style={{ background: 'none', border: 'none', color: '#047857', cursor: 'pointer', padding: '2px' }}>
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+              {uploadError && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', marginBottom: '16px' }}>
+                  ⚠️ {uploadError}
+                </div>
+              )}
+
+              <form onSubmit={handleUploadDocument} style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '650px', margin: '0 auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  {/* Document Name */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '5px' }}>
+                      Document Name <span style={{ color: '#dc2626' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={uploadDocName}
+                      onChange={e => setUploadDocName(e.target.value)}
+                      placeholder="e.g. Statement / Provisional PDF"
+                      required
+                      style={{
+                        width: '100%', padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '6px',
+                        fontSize: '13px', color: '#0f172a', outline: 'none', boxSizing: 'border-box'
+                      }}
+                    />
                   </div>
-                  <div style={{ flex: '1.5', minWidth: '250px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 'bold' }}>File Status</label>
-                    <select className="search-input-box" style={{ width: '100%' }} value={commentStatus} onChange={e => setCommentStatus(e.target.value)}>
-                      {WORKFLOW_STATUSES.map((s, i) => <option key={i} value={s}>{s}</option>)}
+
+                  {/* Document Type */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '5px' }}>
+                      Document Type <span style={{ color: '#dc2626' }}>*</span>
+                    </label>
+                    <select
+                      value={uploadDocTypeId}
+                      onChange={e => setUploadDocTypeId(e.target.value)}
+                      style={{
+                        width: '100%', padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '6px',
+                        fontSize: '13px', color: '#0f172a', outline: 'none', boxSizing: 'border-box', background: '#fff'
+                      }}
+                    >
+                      <option value="">Select Document Type</option>
+                      <option value="tax_summary">Tax Summary</option>
+                      <option value="revised_tax_summary">Revised Tax Summary</option>
+                      <option value="tax_review_copy">Tax Review Copy</option>
+                      <option value="filed_return_for_records">Filed Return For Records</option>
                     </select>
                   </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Comments</label>
-                  <textarea
-                    rows="4"
-                    className="search-input-box"
-                    style={{ width: '100%', height: 'auto', fontFamily: 'inherit' }}
-                    placeholder="Enter administrative workflow update notes..."
-                    value={commentText}
-                    onChange={e => setCommentText(e.target.value)}
-                    required
+
+                {/* Drag & Drop / File Input Box */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '5px' }}>
+                    Select File <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    style={{ display: 'none' }}
+                    onChange={e => {
+                      if (e.target.files && e.target.files[0]) {
+                        const file = e.target.files[0];
+                        setUploadFile(file);
+                        if (!uploadDocName) {
+                          setUploadDocName(file.name.replace(/\.[^/.]+$/, ""));
+                        }
+                      }
+                    }}
                   />
+
+                  <div
+                    style={{
+                      border: uploadFile ? '2px dashed #0076a3' : '2px dashed #cbd5e1',
+                      padding: '30px 20px',
+                      borderRadius: '8px',
+                      background: uploadFile ? '#f0f9ff' : '#f8fafc',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={e => {
+                      e.preventDefault();
+                      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                        const file = e.dataTransfer.files[0];
+                        setUploadFile(file);
+                        if (!uploadDocName) {
+                          setUploadDocName(file.name.replace(/\.[^/.]+$/, ""));
+                        }
+                      }
+                    }}
+                  >
+                    <UploadCloud size={36} color={uploadFile ? '#0076a3' : '#94a3b8'} style={{ marginBottom: '10px' }} />
+                    {uploadFile ? (
+                      <div>
+                        <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#0076a3' }}>
+                          📄 {uploadFile.name}
+                        </p>
+                        <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748b' }}>
+                          {(uploadFile.size / 1024).toFixed(1)} KB | {uploadFile.type || 'Document'}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setUploadFile(null);
+                            if (fileInputRef.current) fileInputRef.current.value = '';
+                          }}
+                          style={{
+                            marginTop: '8px', border: 'none', background: '#fee2e2', color: '#dc2626',
+                            padding: '4px 10px', borderRadius: '4px', fontSize: '11px', fontWeight: '600', cursor: 'pointer'
+                          }}
+                        >
+                          Remove file
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#334155' }}>
+                          Drag & Drop file here, or <span style={{ color: '#0076a3', textDecoration: 'underline' }}>browse</span>
+                        </p>
+                        <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginTop: '4px' }}>
+                          Supported Formats: PDF, PNG, JPG, JPEG, TIFF (Max 10MB)
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button type="submit" style={{ background: '#3ea94f', padding: '8px 20px', border: 'none', fontWeight: 'bold', color: '#fff', borderRadius: '4px', cursor: 'pointer' }}>Submit</button>
-                  <button type="button" className="btn btn-secondary" style={{ padding: '8px 20px', fontWeight: 'bold' }}
-                    onClick={() => { setCommentText(''); setCommentStatus(member.status); }}>Reset</button>
+
+                {/* Submit Button */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                  <button
+                    type="submit"
+                    disabled={isUploading || !uploadFile}
+                    style={{
+                      padding: '10px 24px', border: 'none', borderRadius: '6px',
+                      background: '#0076a3', color: '#fff', fontSize: '13px', fontWeight: '600',
+                      cursor: isUploading || !uploadFile ? 'not-allowed' : 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      opacity: isUploading || !uploadFile ? 0.6 : 1,
+                      boxShadow: '0 2px 4px rgba(0,118,163,0.2)'
+                    }}
+                  >
+                    {isUploading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <UploadCloud size={16} />}
+                    {isUploading ? 'Uploading Document...' : 'Upload Document'}
+                  </button>
                 </div>
               </form>
 
-              <div className="table-responsive">
-                <table className="corporate-table">
-                  <thead><tr><th>S.No</th><th>Status</th><th>Comments</th><th>Date & Time</th></tr></thead>
-                  <tbody>
-                    {history.map((c, i) => (
-                      <tr key={i}>
-                        <td>{i + 1}</td>
-                        <td><span style={{ color: statusColor(c.status), fontWeight: 600 }}>{c.status}</span></td>
-                        <td>{c.comments}</td>
-                        <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{c.dateTime}</td>
+              {/* Uploaded Documents List (Admin Uploaded Only) */}
+              {(() => {
+                const allDocs = profileData?.documents || [];
+                const adminUploadedDocs = allDocs.filter(doc => 
+                  doc.new_docs === true || doc.isAdminUploaded || doc.uploaded_by_admin || doc.admin_upload
+                );
+                
+                console.log('📤 Upload tab - All docs:', allDocs.length, '| Admin docs:', adminUploadedDocs.length);
+                
+                return adminUploadedDocs.length > 0 ? (
+                  <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '1px solid #f1f5f9' }}>
+                    <h4 style={{ fontWeight: 'bold', fontSize: '14px', color: '#0f172a', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ background: '#fff7ed', color: '#ea580c', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>ADMIN UPLOADS</span>
+                      Admin Uploaded Documents History ({adminUploadedDocs.length})
+                    </h4>
+                    <div className="table-responsive">
+                      <table className="corporate-table">
+                        <thead>
+                          <tr>
+                            <th>S.NO</th>
+                            <th>DOCUMENT NAME</th>
+                            <th>FILE NAME</th>
+                            <th>FILE SIZE</th>
+                            <th>UPLOADED DATE</th>
+                            <th>ACTION</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {adminUploadedDocs.map((doc, i) => {
+                            const docName = doc.document_name || doc.original_name || doc.file_name || 'Document';
+                            const fileName = doc.original_name || doc.file_name || '—';
+                            const sizeStr = doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : '—';
+                            const uploadDate = doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : '—';
+
+                            return (
+                              <tr key={doc._id || i}>
+                                <td>{i + 1}</td>
+                                <td style={{ fontWeight: '600', color: '#0f172a' }}>{docName}</td>
+                                <td style={{ fontSize: '12px', color: '#475569' }}>{fileName}</td>
+                                <td style={{ fontSize: '12px', color: '#64748b' }}>{sizeStr}</td>
+                                <td style={{ fontSize: '12px', color: '#64748b' }}>{uploadDate}</td>
+                                <td>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteDoc(doc._id || i)}
+                                    style={{
+                                      padding: '4px 10px', fontSize: '12px', border: '1px solid #fecaca',
+                                      background: '#fef2f2', color: '#dc2626', borderRadius: '4px',
+                                      cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                      fontWeight: '600'
+                                    }}
+                                  >
+                                    <Trash2 size={13} /> Delete
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+            </div>
+          )}
+
+          {/* ── File Info (Member Status & History) ── */}
+          {activeTab === 'fileInfo' && (
+            <div className="file-info-view" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <form onSubmit={handleCreateFileInfoStatus} style={{ border: '1px solid var(--border-light)', padding: '24px', borderRadius: 'var(--radius-sm)', background: '#fff' }}>
+                {/* File Info Header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px', paddingBottom: '14px', borderBottom: '1px solid #f1f5f9' }}>
+                  <div style={{ background: '#f1f5f9', color: '#0076a3', padding: '9px', borderRadius: '8px', display: 'flex' }}>
+                    <FileText size={20} />
+                  </div>
+                  <div>
+                    <h4 style={{ fontWeight: 'bold', margin: 0, fontSize: '15px', color: '#0f172a' }}>File Information & Workflow Status</h4>
+                    <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>Update administrative filing status and record status notes</p>
+                  </div>
+                </div>
+
+                {fileInfoSuccessMsg && (
+                  <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#047857', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <CheckCircle size={16} style={{ flexShrink: 0 }} /> {fileInfoSuccessMsg}
+                    </div>
+                    <button type="button" onClick={() => setFileInfoSuccessMsg('')} style={{ background: 'none', border: 'none', color: '#047857', cursor: 'pointer', padding: '2px' }}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+                {fileInfoErrorMsg && (
+                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', marginBottom: '16px' }}>
+                    ⚠️ {fileInfoErrorMsg}
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                  {/* File No */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>File No</label>
+                    <input type="text" className="search-input-box" style={{ width: '100%', background: '#f8fafc', color: '#64748b', cursor: 'not-allowed' }} value={member.fileNo} disabled />
+                  </div>
+
+                  {/* Filing Type */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>Filing Type <span style={{ color: '#dc2626' }}>*</span></label>
+                    <select
+                      className="search-input-box"
+                      style={{ width: '100%', background: '#fff' }}
+                      value={fileTypeInput}
+                      onChange={e => setFileTypeInput(e.target.value)}
+                    >
+                      <option value="E-Filing">E-Filing</option>
+                      <option value="Paper-Filing">Paper Filing</option>
+                    </select>
+                  </div>
+
+                  {/* File Status */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>File Status <span style={{ color: '#dc2626' }}>*</span></label>
+                    <select
+                      className="search-input-box"
+                      style={{ width: '100%', background: '#fff' }}
+                      value={statusInput}
+                      onChange={e => setStatusInput(e.target.value)}
+                    >
+                      {WORKFLOW_STATUSES.map((s, i) => (
+                        <option key={i} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Comments Textarea */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '18px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>Comments <span style={{ color: '#dc2626' }}>*</span></label>
+                  <textarea
+                    rows="4"
+                    className="search-input-box"
+                    style={{ width: '100%', height: 'auto', fontFamily: 'inherit', padding: '10px' }}
+                    placeholder="Enter administrative workflow update comments..."
+                    value={commentsInput}
+                    onChange={e => setCommentsInput(e.target.value)}
+                    required
+                  />
+                </div>
+
+                {/* Submit & Reset Buttons */}
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ padding: '8px 20px', fontWeight: '600' }}
+                    onClick={() => {
+                      setCommentsInput('');
+                      setStatusInput(member.status || 'EFA_FC');
+                      setFileTypeInput(member.filingType || 'E-Filing');
+                      setFileInfoErrorMsg('');
+                    }}
+                  >
+                    Reset
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingFileInfo || !commentsInput.trim()}
+                    style={{
+                      background: '#0076a3', padding: '8px 22px', border: 'none', fontWeight: '600',
+                      color: '#fff', borderRadius: '6px', cursor: isSubmittingFileInfo || !commentsInput.trim() ? 'not-allowed' : 'pointer',
+                      opacity: isSubmittingFileInfo || !commentsInput.trim() ? 0.6 : 1,
+                      display: 'flex', alignItems: 'center', gap: '6px'
+                    }}
+                  >
+                    {isSubmittingFileInfo ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : null}
+                    {isSubmittingFileInfo ? 'Submitting...' : 'Submit Update'}
+                  </button>
+                </div>
+              </form>
+
+              {/* Status History Table */}
+              <div style={{ border: '1px solid var(--border-light)', padding: '20px', borderRadius: 'var(--radius-sm)', background: '#fff', position: 'relative' }}>
+                {/* Loading Overlay */}
+                {loadingFileInfo && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(255, 255, 255, 0.85)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10,
+                    borderRadius: 'var(--radius-sm)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0076a3', fontSize: '13px', fontWeight: '600' }}>
+                      <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                      Refreshing history...
+                    </div>
+                  </div>
+                )}
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <h4 style={{ fontWeight: 'bold', margin: 0, fontSize: '14px', color: '#0f172a' }}>
+                    Status History & Activity Log ({statusHistory.length})
+                  </h4>
+                  <button
+                    onClick={fetchFileInfoHistory}
+                    disabled={loadingFileInfo}
+                    style={{
+                      border: '1px solid #cbd5e1',
+                      background: '#fff',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      color: '#475569',
+                      cursor: loadingFileInfo ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      opacity: loadingFileInfo ? 0.5 : 1
+                    }}
+                  >
+                    <RefreshCw size={14} style={{ animation: loadingFileInfo ? 'spin 1s linear infinite' : 'none' }} />
+                    Refresh
+                  </button>
+                </div>
+
+                <div className="table-responsive">
+                  <table className="corporate-table">
+                    <thead>
+                      <tr>
+                        <th>S.No</th>
+                        <th>Filing Type</th>
+                        <th>Status</th>
+                        <th>Comments</th>
+                        <th>Created By</th>
+                        <th>Date & Time</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {statusHistory.length > 0 ? (
+                        statusHistory.map((c, i) => (
+                          <tr key={c._id || i}>
+                            <td>{i + 1}</td>
+                            <td style={{ fontWeight: '500' }}>{c.file_type || member.filingType || '—'}</td>
+                            <td>
+                              <span style={{
+                                background: c.status?.includes('EFA') || c.status_name?.includes('Complete') ? '#ecfdf5' : '#f0f9ff',
+                                color: c.status?.includes('EFA') || c.status_name?.includes('Complete') ? '#047857' : '#0369a1',
+                                border: '1px solid #bae6fd',
+                                padding: '3px 8px',
+                                borderRadius: '12px',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                display: 'inline-block'
+                              }}>
+                                {c.status_name || c.status || '—'}
+                              </span>
+                            </td>
+                            <td style={{ color: '#334155' }}>{c.comments || '—'}</td>
+                            <td style={{ fontSize: '12px', color: '#64748b' }}>{c.createdBy || 'Admin'}</td>
+                            <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+                              {c.createdAt ? new Date(c.createdAt).toLocaleString() : (c.dateTime || '—')}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: '#94a3b8' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                              <FileText size={32} color="#cbd5e1" />
+                              <p style={{ margin: 0, fontSize: '13px', fontWeight: '500' }}>No status history available yet</p>
+                              <p style={{ margin: 0, fontSize: '11px' }}>Submit an update above to create the first entry</p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -756,7 +2025,15 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
         onClose={() => setOtpOpen(false)}
         onVerify={handleOtpVerify}
         onResend={() => onSendEmailOtp && onSendEmailOtp(member._id || member.sNo)}
-        fieldLabel="Email Address"
+        fieldLabel={otpFieldLabel}
+      />
+
+      <BankModal
+        isOpen={bankModalOpen}
+        onClose={() => setBankModalOpen(false)}
+        onSave={handleSaveBankDetails}
+        bankData={profileData?.bankDetails}
+        memberName={profileData?.personalInfo ? `${profileData.personalInfo.first_name || ''} ${profileData.personalInfo.last_name || ''}`.trim() : member.name}
       />
     </>
   );
@@ -786,10 +2063,27 @@ export default function MemberTableLayout({
   }, [selectedYear]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDate, setFilterDate] = useState('');
-  const [activeSubTab, setActiveSubTab] = useState(statusCode === 'all' ? '' : 'New'); // '' (none), 'New' or 'Modified'
-  const [selectedMember, setSelectedMember] = useState(null);
+  const [activeSubTab, setActiveSubTab] = useState(statusCode === 'all' ? '' : 'New');
+  const [selectedMember, setSelectedMember] = useState(() => {
+    // Try to restore selected member from sessionStorage on component mount
+    try {
+      const saved = sessionStorage.getItem('selectedMemberView');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [activeDetailTab, setActiveDetailTab] = useState('personal');
   const [unmaskedEmails, setUnmaskedEmails] = useState({});
+
+  // Save selectedMember to sessionStorage whenever it changes
+  useEffect(() => {
+    if (selectedMember) {
+      sessionStorage.setItem('selectedMemberView', JSON.stringify(selectedMember));
+    } else {
+      sessionStorage.removeItem('selectedMemberView');
+    }
+  }, [selectedMember]);
   const [otpOpen, setOtpOpen] = useState(false);
   const [pendingMemberId, setPendingMemberId] = useState(null);
   const [commentsHistory, setCommentsHistory] = useState(INITIAL_COMMENTS || {});
@@ -883,7 +2177,7 @@ export default function MemberTableLayout({
               sNo: item._id,
               name: `${item.first_name || ''} ${item.last_name || ''}`.trim() || 'N/A',
               fileNo: item.file_no ? String(item.file_no) : 'N/A',
-              filingType: item.tin_type || item.file_type || 'E-Filing',
+              filingType: item.file_type || item.file_type || 'E-Filing',
               email: item.email || '',
               regDate: item.date_created ? new Date(item.date_created).toLocaleString() : '',
               status: item.filestatus || 'Registered',
@@ -928,11 +2222,12 @@ export default function MemberTableLayout({
     return `XXXXXXXXXX.${email.split('.').pop()}`;
   };
 
-  // API Call: Send Email Verification OTP
-  const handleSendEmailOtp = async (memberId) => {
+  // API Call: Send Email/Contact Verification OTP
+  const handleSendEmailOtp = async (memberId, isContact = false) => {
     try {
       const token = getAuthToken();
-      const res = await fetch(URLS.SendEmailOtp, {
+      const url = isContact ? URLS.SendContactOtp : URLS.SendEmailOtp;
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -941,6 +2236,7 @@ export default function MemberTableLayout({
         body: JSON.stringify({ member_id: memberId })
       });
       const data = await res.json();
+      console.log(`📤 Send ${isContact ? 'Contact' : 'Email'} OTP:`, data);
       return data.success;
     } catch (err) {
       console.error('Send OTP error:', err);
@@ -948,11 +2244,13 @@ export default function MemberTableLayout({
     }
   };
 
-  // API Call: Verify Email Verification OTP
-  const handleVerifyEmailOtp = async (memberId, otpCode) => {
+  // API Call: Verify Email/Contact Verification OTP
+  const handleVerifyEmailOtp = async (memberId, otpCode, otpType = 'email') => {
     try {
       const token = getAuthToken();
-      const res = await fetch(URLS.VerifyEmailOtp, {
+      const isContact = otpType === 'contact';
+      const url = isContact ? URLS.VerifyContactOtp : URLS.VerifyEmailOtp;
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -961,6 +2259,7 @@ export default function MemberTableLayout({
         body: JSON.stringify({ member_id: memberId, otp: otpCode })
       });
       const data = await res.json();
+      console.log(`📥 Verify ${isContact ? 'Contact' : 'Email'} OTP:`, data);
       return data.success;
     } catch (err) {
       console.error('Verify OTP error:', err);
@@ -1005,61 +2304,106 @@ export default function MemberTableLayout({
         alert("No member records found to export.");
         return;
       }
-      const headers = [
-        "File No", "File Type", "First Name", "Last Name", "Contact Number",
-        "Alt Number", "Email", "Tin Type", "File Status", "Stage", "Year",
-        "Created Date", "Updated Date"
-      ];
-      const rows = blobOrUrl.map(item => [
-        `"${item.file_no || ''}"`,
-        `"${(item.file_type || '').replace(/"/g, '""')}"`,
-        `"${(item.first_name || '').replace(/"/g, '""')}"`,
-        `"${(item.last_name || '').replace(/"/g, '""')}"`,
-        `"${(item.contact_number || '').replace(/"/g, '""')}"`,
-        `"${(item.alter_number || '').replace(/"/g, '""')}"`,
-        `"${(item.email || '').replace(/"/g, '""')}"`,
-        `"${(item.tin_type || '').replace(/"/g, '""')}"`,
-        `"${(item.filestatus || '').replace(/"/g, '""')}"`,
-        `"${(item.current_stage || item.stage || '').replace(/"/g, '""')}"`,
-        `"${(item.year?.name || '').replace(/"/g, '""')}"`,
-        `"${item.date_created ? new Date(item.date_created).toLocaleString() : ''}"`,
-        `"${item.date_updated ? new Date(item.date_updated).toLocaleString() : ''}"`
-      ].join(','));
-
-      const csvString = '\uFEFF' + [headers.join(','), ...rows].join('\n');
-      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      
+      // console.log('📊 Converting', blobOrUrl.length, 'records to Excel format');
+      
+      // Prepare data for Excel
+      const excelData = blobOrUrl.map(item => ({
+        'File No': item.file_no || '',
+        'File Type': item.file_type || item.tin_type || '',
+        'First Name': item.first_name || '',
+        'Last Name': item.last_name || '',
+        'Email': item.email || '',
+        'Contact Number': item.contact_number || '',
+        'Alternate Number': item.alter_number || '',
+        'State': item.state?.name || item.state || '',
+        'City': item.city || '',
+        'Zipcode': item.zipcode || '',
+        'Filing Status': item.filing_status || '',
+        'File Status': item.filestatus || '',
+        'Current Stage': item.current_stage || item.stage || '',
+        'Year': item.year?.name || '',
+        'Date Created': item.date_created ? new Date(item.date_created).toLocaleString() : '',
+        'Date Updated': item.date_updated ? new Date(item.date_updated).toLocaleString() : ''
+      }));
+      
+      // Create workbook and worksheet
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Members');
+      
+      // Generate Excel file
+      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      
+      // Download
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = fileName.endsWith('.csv') ? fileName : fileName.replace(/\.xlsx$/i, '.csv');
+      a.download = fileName.endsWith('.xlsx') ? fileName : fileName.replace(/\.csv$/i, '.xlsx');
       document.body.appendChild(a);
       a.click();
       a.remove();
       setTimeout(() => window.URL.revokeObjectURL(url), 2000);
+      
+      // console.log('✅ Excel file downloaded:', a.download);
     } else if (typeof blobOrUrl === 'string' && blobOrUrl.length > 0) {
-      let fullUrl = blobOrUrl;
+      // Remove hash from URL if present
+      let cleanUrl = blobOrUrl;
+      if (cleanUrl.includes('#')) {
+        const hashIndex = cleanUrl.indexOf('#');
+        cleanUrl = cleanUrl.substring(0, hashIndex);
+        // console.log('🧹 Cleaned URL (removed hash):', cleanUrl);
+      }
+      
+      // Make URL absolute if needed
+      let fullUrl = cleanUrl;
       if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://') && !fullUrl.startsWith('blob:') && !fullUrl.startsWith('data:')) {
         fullUrl = `${URLS.Base}${fullUrl.startsWith('/') ? fullUrl.slice(1) : fullUrl}`;
       }
-      const a = document.createElement('a');
-      a.href = fullUrl;
-      a.download = fileName;
-      a.target = '_blank';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      // console.log('📥 Downloading from URL:', fullUrl);
+      
+      // Fetch the file and download it
+      fetch(fullUrl)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.blob();
+        })
+        .then(blob => {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => window.URL.revokeObjectURL(url), 2000);
+          // console.log('✅ File downloaded:', fileName);
+        })
+        .catch(error => {
+          console.error('❌ Download error:', error);
+          alert(`Failed to download file: ${error.message}`);
+        });
     }
   };
 
-  // API Call: Export Previous Year Excel
+  // API Call: Export Previous Year Excel (All except current year)
   const handleExportPreviousYear = async () => {
+    // console.log('📤 Exporting Previous Year Members (excluding current year)');
+    
     try {
       const token = getAuthToken();
+      // Backend expects: year_id as empty string, search, and filestatus
       const payload = {
-        year_id: activeYearId || "6a59ede933d5d0234c05b6bf",
-        search: searchTerm || "",
-        filestatus: statusCode === 'all' || !statusCode ? 'all' : statusCode
+        year_id: "",
+        search: "",
+        filestatus: ""
       };
+
+      // console.log('📤 Export payload:', payload);
+      // console.log('📤 API endpoint:', URLS.ExportPerivousYear);
 
       const res = await fetch(URLS.ExportPerivousYear, {
         method: 'POST',
@@ -1070,43 +2414,79 @@ export default function MemberTableLayout({
         body: JSON.stringify(payload)
       });
 
+      // console.log('📥 Export response status:', res.status);
+
       if (!res.ok) {
+        const errorText = await res.text();
+        console.error('❌ Export error response:', errorText);
         throw new Error(`Export error: ${res.status}`);
       }
 
       const contentType = res.headers.get("content-type") || "";
+      // console.log('📋 Content-Type:', contentType);
+      
       if (contentType.includes("application/json")) {
         const result = await res.json();
+        // console.log('📥 FULL JSON response:', result);
+        // console.log('📊 Data array length:', Array.isArray(result.data) ? result.data.length : 'Not an array');
+        
+        if (!result.success) {
+          console.error('❌ Export failed:', result.message);
+          return;
+        }
+        
+        // Check if data is empty
+        if (Array.isArray(result.data) && result.data.length === 0) {
+          // console.warn('⚠️ No data returned from API');
+          return;
+        }
+        
         const filePath = result.data?.url || result.data?.file || result.data?.filePath || result.download_url || result.file_path || result.file;
+        
         if (typeof filePath === 'string' && filePath.length > 0) {
-          triggerFileDownload(filePath, `previous_members_except_${numericYear}.xlsx`);
-        } else if (Array.isArray(result.data)) {
-          triggerFileDownload(result.data, `previous_members_except_${numericYear}.csv`);
+          // console.log('📥 File path from API:', filePath);
+          triggerFileDownload(filePath, `previous_members_except_current.xlsx`);
+        } else if (Array.isArray(result.data) && result.data.length > 0) {
+          // console.log('📊 Exporting', result.data.length, 'records as Excel');
+          triggerFileDownload(result.data, `previous_members_except_current.xlsx`);
         } else if (typeof result.data === 'string' && result.data.length > 0) {
-          triggerFileDownload(result.data, `previous_members_except_${numericYear}.xlsx`);
+          // console.log('📥 String data from API');
+          triggerFileDownload(result.data, `previous_members_except_current.xlsx`);
         } else {
-          alert(result.message || 'Export completed.');
+          // console.warn('⚠️ No downloadable data in response');
         }
       } else {
+        // console.log('📥 Blob response, converting to Excel');
         const rawBlob = await res.blob();
+        // console.log('📊 Blob size:', rawBlob.size, 'bytes');
+        
+        if (rawBlob.size === 0) {
+          // console.warn('⚠️ Blob is empty');
+          return;
+        }
+        
         const excelBlob = new Blob([rawBlob], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        triggerFileDownload(excelBlob, `previous_members_except_${numericYear}.xlsx`);
+        triggerFileDownload(excelBlob, `previous_members_except_current.xlsx`);
       }
     } catch (err) {
-      console.error('Export error:', err);
-      alert(`Export request failed: ${err.message}`);
+      console.error('❌ Export error:', err);
     }
   };
 
   // API Call: Export Current Year Excel
   const handleExportCurrentYear = async () => {
+    // console.log('📤 Exporting Current Year Members');
+    
     try {
       const token = getAuthToken();
+      // Backend expects: search and filestatus only (NO year_id)
       const payload = {
-        year_id: activeYearId || "6a59ede933d5d0234c05b6bf",
-        search: searchTerm || "",
-        filestatus: statusCode === 'all' || !statusCode ? 'all' : statusCode
+        search: "",
+        filestatus: ""
       };
+
+      // console.log('📤 Export payload:', payload);
+      // console.log('📤 API endpoint:', URLS.ExportCurrentYear);
 
       const res = await fetch(URLS.ExportCurrentYear, {
         method: 'POST',
@@ -1117,31 +2497,62 @@ export default function MemberTableLayout({
         body: JSON.stringify(payload)
       });
 
+      // console.log('📥 Export response status:', res.status);
+
       if (!res.ok) {
+        const errorText = await res.text();
+        console.error('❌ Export error response:', errorText);
         throw new Error(`Export error: ${res.status}`);
       }
 
       const contentType = res.headers.get("content-type") || "";
+      // console.log('📋 Content-Type:', contentType);
+      
       if (contentType.includes("application/json")) {
         const result = await res.json();
+        // console.log('📥 FULL JSON response:', result);
+        // console.log('📊 Data array length:', Array.isArray(result.data) ? result.data.length : 'Not an array');
+        
+        if (!result.success) {
+          console.error('❌ Export failed:', result.message);
+          return;
+        }
+        
+        // Check if data is empty
+        if (Array.isArray(result.data) && result.data.length === 0) {
+          // console.warn('⚠️ No data returned from API');
+          return;
+        }
+        
         const filePath = result.data?.url || result.data?.file || result.data?.filePath || result.download_url || result.file_path || result.file;
+        
         if (typeof filePath === 'string' && filePath.length > 0) {
-          triggerFileDownload(filePath, `current_members_${numericYear}.xlsx`);
-        } else if (Array.isArray(result.data)) {
-          triggerFileDownload(result.data, `current_members_${numericYear}.csv`);
+          // console.log('📥 File path from API:', filePath);
+          triggerFileDownload(filePath, `current_year_members.xlsx`);
+        } else if (Array.isArray(result.data) && result.data.length > 0) {
+          // console.log('📊 Exporting', result.data.length, 'records as Excel');
+          triggerFileDownload(result.data, `current_year_members.xlsx`);
         } else if (typeof result.data === 'string' && result.data.length > 0) {
-          triggerFileDownload(result.data, `current_members_${numericYear}.xlsx`);
+          // console.log('📥 String data from API');
+          triggerFileDownload(result.data, `current_year_members.xlsx`);
         } else {
-          alert(result.message || 'Export completed.');
+          // console.warn('⚠️ No downloadable data in response');
         }
       } else {
+        // console.log('📥 Blob response, converting to Excel');
         const rawBlob = await res.blob();
+        // console.log('📊 Blob size:', rawBlob.size, 'bytes');
+        
+        if (rawBlob.size === 0) {
+          // console.warn('⚠️ Blob is empty');
+          return;
+        }
+        
         const excelBlob = new Blob([rawBlob], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        triggerFileDownload(excelBlob, `current_members_${numericYear}.xlsx`);
+        triggerFileDownload(excelBlob, `current_year_members.xlsx`);
       }
     } catch (err) {
-      console.error('Export error:', err);
-      alert(`Export request failed: ${err.message}`);
+      console.error('❌ Export error:', err);
     }
   };
 
@@ -1162,7 +2573,7 @@ export default function MemberTableLayout({
     return (
       <div className="content-card">
         {/* Pill toolbar */}
-        <div className="table-filter-bar">
+        {/* <div className="table-filter-bar">
           <div className="filter-left-pill-group">
             <button className="pill-btn new-members" style={{ border: activeSubTab === 'New' ? '2px solid black' : 'none' }}
               onClick={() => setActiveSubTab(prev => (prev === 'New' ? '' : 'New'))}>New Registered Members</button>
@@ -1170,19 +2581,19 @@ export default function MemberTableLayout({
               onClick={() => setActiveSubTab(prev => (prev === 'Modified' ? '' : 'Modified'))}>Last Modified Members</button>
             <span className="pill-badge">Total {totalCount}</span>
           </div>
-        </div>
+        </div> */}
 
         {/* Two Excel Download Cards */}
-        <div className="excel-btn-group">
+        {/* <div className="excel-btn-group">
           <button className="excel-download-btn-card" onClick={handleExportPreviousYear}>
             <span className="excel-btn-top">⬇ Excel</span>
-            <span className="excel-btn-bottom">Note: Download All members except {numericYear} Year</span>
+            <span className="excel-btn-bottom">Note: Download All members except current year</span>
           </button>
           <button className="excel-download-btn-card" onClick={handleExportCurrentYear}>
             <span className="excel-btn-top">⬇ Excel</span>
-            <span className="excel-btn-bottom">Note: Download All Members {numericYear} Year Only</span>
+            <span className="excel-btn-bottom">Note: Download All Members current year only</span>
           </button>
-        </div>
+        </div> */}
 
         <MemberDetailFullPage
           member={selectedMember}
@@ -1253,11 +2664,11 @@ export default function MemberTableLayout({
       <div className="excel-btn-group">
         <button className="excel-download-btn-card" onClick={handleExportPreviousYear}>
           <span className="excel-btn-top">⬇ Excel</span>
-          <span className="excel-btn-bottom">Note: Download All members except {numericYear} Year</span>
+          <span className="excel-btn-bottom">Note: Download All members except current year</span>
         </button>
         <button className="excel-download-btn-card" onClick={handleExportCurrentYear}>
           <span className="excel-btn-top">⬇ Excel</span>
-          <span className="excel-btn-bottom">Note: Download All Members {numericYear} Year Only</span>
+          <span className="excel-btn-bottom">Note: Download All Members current year only</span>
         </button>
       </div>
 

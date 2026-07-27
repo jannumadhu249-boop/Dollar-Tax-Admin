@@ -1,5 +1,3 @@
-// src/data/mockMembers.js
-// Shared mock data engine and helper utilities for Dollar Tax Admin workflow components
 
 export const INITIAL_MEMBERS = [
   // --- PRE-PROCESSING / SCHEDULING PENDING / REGISTERED USERS ---

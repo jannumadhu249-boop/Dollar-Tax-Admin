@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import AuthAlert from './AuthAlert';
+import { Send, Mail, Image as ImageIcon } from 'lucide-react';
 
 export default function SendMail({ selectedYear = 'TY2025' }) {
   const [status, setStatus] = useState('Select Status');
@@ -8,7 +9,6 @@ export default function SendMail({ selectedYear = 'TY2025' }) {
   const [imageFile, setImageFile] = useState(null);
   const [message, setMessage] = useState(null);
 
-  // Extract digits/year from selectedYear (e.g. "TY2025" -> "2025")
   const resolvedYear = selectedYear.replace(/\D/g, '') || '2025';
 
   const handleTestMail = (e) => {
@@ -36,7 +36,6 @@ export default function SendMail({ selectedYear = 'TY2025' }) {
     if (confirm(`Are you sure you want to send this email to all users with status "${status}" for Tax Year ${resolvedYear}?`)) {
       alert(`Success: Email broadcast dispatched successfully!\n\nTarget Group: ${status}\nTotal recipients simulated: 142\nSubject: "${subject}"`);
       
-      // Reset form
       setStatus('Select Status');
       setSubject('');
       setBody('');
@@ -46,30 +45,31 @@ export default function SendMail({ selectedYear = 'TY2025' }) {
   };
 
   return (
-    <div className="content-card" style={{ animation: 'fadeIn 0.2s ease-out' }}>
-      <div className="header-section" style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '12px', marginBottom: '20px' }}>
-        <h2 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0, color: 'var(--text-dark)' }}>
-          Send Mail to All Register in {resolvedYear} Tax Year
+    <div className="content-card" style={{ animation: 'fadeIn 0.2s ease-out', padding: '24px' }}>
+      <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '14px', marginBottom: '24px' }}>
+        <h2 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Mail size={20} color="#0076a3" />
+          Send Mail to All Registered in {resolvedYear} Tax Year
         </h2>
       </div>
 
       {message && (
         <AuthAlert
           type={message.type === 'success' ? 'success' : message.type === 'error' ? 'error' : 'info'}
-          title={message.type === 'success' ? 'Email sent' : message.type === 'error' ? 'Cannot send email' : 'Notice'}
+          title={message.type === 'success' ? 'Email Sent' : message.type === 'error' ? 'Cannot Send Email' : 'Notice'}
           message={message.text}
         />
       )}
 
-      <form style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '800px' }}>
-        {/* Status Selection */}
+      <form style={{ display: 'flex', flexDirection: 'column', gap: '18px', maxWidth: '800px' }}>
+        {/* Select Status */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#333333' }}>Select Status</label>
+          <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#334155' }}>Select Status <span style={{ color: '#dc2626' }}>*</span></label>
           <select 
             value={status} 
             onChange={(e) => setStatus(e.target.value)}
             className="search-input-box"
-            style={{ width: '100%', padding: '10px 12px', fontSize: '14px' }}
+            style={{ width: '100%', padding: '10px 12px', fontSize: '13px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
           >
             <option value="Select Status">Select Status</option>
             <option value="Registered Users">Registered Users</option>
@@ -83,68 +83,68 @@ export default function SendMail({ selectedYear = 'TY2025' }) {
 
         {/* Subject */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#333333' }}>Subject</label>
+          <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#334155' }}>Subject <span style={{ color: '#dc2626' }}>*</span></label>
           <input
             type="text"
             className="search-input-box"
             placeholder="Enter Email Subject"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            style={{ width: '100%', padding: '10px 12px', fontSize: '14px' }}
+            style={{ width: '100%', padding: '10px 12px', fontSize: '13px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
           />
         </div>
 
         {/* Body */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#333333' }}>Body</label>
+          <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#334155' }}>Body <span style={{ color: '#dc2626' }}>*</span></label>
           <textarea
             rows="6"
             className="search-input-box"
             placeholder="Enter Email Content Body"
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            style={{ width: '100%', height: '150px', fontSize: '14px', fontFamily: 'inherit', padding: '10px 12px' }}
+            style={{ width: '100%', height: '150px', fontSize: '13px', fontFamily: 'inherit', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
           />
         </div>
 
-        {/* Image File Upload */}
+        {/* Image Attachment */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#333333' }}>Image</label>
+          <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#334155' }}>Image Attachment</label>
           <input
             type="file"
             accept="image/*"
             onChange={(e) => setImageFile(e.target.files[0] ? e.target.files[0].name : null)}
             style={{
-              padding: '10px 12px',
-              border: '1px solid #ccc',
-              borderRadius: 'var(--radius-sm)',
+              padding: '8px 12px',
+              border: '1px solid #cbd5e1',
+              borderRadius: '6px',
               fontSize: '13px',
               backgroundColor: '#fff',
               cursor: 'pointer'
             }}
           />
           {imageFile && (
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              Selected image: <strong>{imageFile}</strong>
+            <span style={{ fontSize: '12px', color: '#0076a3', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <ImageIcon size={14} /> Selected image: <strong>{imageFile}</strong>
             </span>
           )}
         </div>
 
         {/* Buttons Row */}
-        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+        <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
           <button
             type="button"
             onClick={handleTestMail}
             style={{
-              backgroundColor: '#1b62a5',
+              backgroundColor: '#64748b',
               color: '#ffffff',
               border: 'none',
               padding: '10px 20px',
-              fontSize: '14px',
+              fontSize: '13px',
               fontWeight: '600',
-              borderRadius: 'var(--radius-sm)',
+              borderRadius: '6px',
               cursor: 'pointer',
-              transition: 'opacity var(--transition-fast)'
+              boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
             }}
           >
             Test Mail
@@ -153,18 +153,21 @@ export default function SendMail({ selectedYear = 'TY2025' }) {
             type="button"
             onClick={handleSendMail}
             style={{
-              backgroundColor: '#1b62a5',
+              backgroundColor: '#0076a3',
               color: '#ffffff',
               border: 'none',
-              padding: '10px 20px',
-              fontSize: '14px',
+              padding: '10px 24px',
+              fontSize: '13px',
               fontWeight: '600',
-              borderRadius: 'var(--radius-sm)',
+              borderRadius: '6px',
               cursor: 'pointer',
-              transition: 'opacity var(--transition-fast)'
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 2px 4px rgba(0,118,163,0.2)'
             }}
           >
-            Send Mail
+            <Send size={15} /> Send Mail
           </button>
         </div>
       </form>

@@ -560,8 +560,8 @@ import { INITIAL_MEMBERS } from '../data/mockMembers';
 
 export default function Sidebar({ selectedYear = 'TY2025', currentFilter = 'all-registered', onFilterChange }) {
   const [openMenus, setOpenMenus] = useState({
-    preprocessing: true,
-    preparation: true,
+    preprocessing: false,
+    preparation: false,
     payment: false,
     clientReview: false,
     efiling: false,
