@@ -1,7 +1,7 @@
 import React from 'react';
 import MemberTableLayout from '../../components/MemberTableLayout';
 
-export default function EFiledRejected({ selectedYear = 'TY2025' }) {
+export default function EFiledRejected({ selectedYear = '' }) {
   return (
     <MemberTableLayout
       title="E - Filed & Rejected"

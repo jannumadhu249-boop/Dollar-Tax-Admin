@@ -1,7 +1,7 @@
 import React from 'react';
 import MemberTableLayout from '../../components/MemberTableLayout';
 
-export default function Preparation2({ selectedYear = 'TY2025' }) {
+export default function Preparation2({ selectedYear = '' }) {
   return (
     <MemberTableLayout
       title="Preparation - 2"

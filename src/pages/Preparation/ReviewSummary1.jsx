@@ -1,7 +1,7 @@
 import React from 'react';
 import MemberTableLayout from '../../components/MemberTableLayout';
 
-export default function ReviewSummary1({ selectedYear = 'TY2025' }) {
+export default function ReviewSummary1({ selectedYear = '' }) {
   return (
     <MemberTableLayout
       title="Review & Summary 1"

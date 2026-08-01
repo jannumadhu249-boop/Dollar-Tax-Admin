@@ -1,7 +1,7 @@
 import React from 'react';
 import MemberTableLayout from '../../components/MemberTableLayout';
 
-export default function RegisteredUsers({ selectedYear = 'TY2025' }) {
+export default function RegisteredUsers({ selectedYear = '' }) {
   return (
     <MemberTableLayout
       title="Registered Users"

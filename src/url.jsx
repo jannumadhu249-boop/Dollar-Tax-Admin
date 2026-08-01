@@ -40,9 +40,36 @@ export const URLS = {
     UpdateBankDetails : base_url + "v1/minimumTax/admin/memberBank/updateBankDetails/",
 
     // Upload Documents
+    GetUploadList : base_url + "v1/minimumTax/admin/adminUpload/getUploadedDocuments/",
     UploadDocuments : base_url + "v1/minimumTax/admin/adminUpload/uploadDocByAdmin/",
+    DeleteUploads : base_url + "v1/minimumTax/admin/adminUpload/deleteUploadedDocument/",
 
     // File Info
     GetFileInfo : base_url + "v1/minimumTax/admin/memberStatus/getMemberStatusHistory/",
     CreateFileInfo : base_url + "v1/minimumTax/admin/memberStatus/createMemberStatus/",
+
+    // Pay
+    GetPayList : base_url + "v1/minimumTax/admin/pay/getPaymentHistory/",
+    PayAmount : base_url + "v1/minimumTax/admin/pay/addPayment/",
+
+    // Referrals
+    GetReferalReport : base_url + "v1/minimumTax/admin/referrals/getReferralsReport",
+    ViewReferalMember : base_url + "v1/minimumTax/admin/referrals/getReferralReportByMember/",
+    RefereeSendEmailOtp : base_url + "v1/minimumTax/admin/referrals/sendReferralEmailOtp",
+    RefereeVerifyEmailOtp : base_url + "v1/minimumTax/admin/referrals/verifyReferralEmailOtp",
+
+    // Referee
+    GetRefereeReport : base_url + "v1/minimumTax/admin/referrals/getRefereeReport",
+    ExportRefereeReport : base_url + "v1/minimumTax/admin/referrals/exportRefereeReport",
+    UpdateRefereeReport : base_url + "v1/minimumTax/admin/referrals/updateRefereeReport/",
+
+    // Client Search 
+    GetClientSearch : base_url + "v1/minimumTax/admin/clientSearch/getClientSearch",
+
+    // Query List
+    GetQueryList : base_url + "v1/minimumTax/admin/queryList/getAllQueries",
+    ReplyQuery : base_url + "v1/minimumTax/admin/queryList/replyQuery/",
+
+    // Client Stage
+    GetClientStage : base_url + "v1/minimumTax/admin/stage/getMemberStages",
 }

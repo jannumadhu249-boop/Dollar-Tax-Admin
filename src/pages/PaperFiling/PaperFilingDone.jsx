@@ -1,7 +1,7 @@
 import React from 'react';
 import MemberTableLayout from '../../components/MemberTableLayout';
 
-export default function PaperFilingDone({ selectedYear = 'TY2025' }) {
+export default function PaperFilingDone({ selectedYear = '' }) {
   return (
     <MemberTableLayout
       title="Paper Filing Done"

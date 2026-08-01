@@ -1,7 +1,7 @@
 import React from 'react';
 import MemberTableLayout from '../../components/MemberTableLayout';
 
-export default function InfoPending({ selectedYear = 'TY2025' }) {
+export default function InfoPending({ selectedYear = '' }) {
   return (
     <MemberTableLayout
       title="Information Pending"

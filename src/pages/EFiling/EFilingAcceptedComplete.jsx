@@ -1,7 +1,7 @@
 import React from 'react';
 import MemberTableLayout from '../../components/MemberTableLayout';
 
-export default function EFilingAcceptedComplete({ selectedYear = 'TY2025' }) {
+export default function EFilingAcceptedComplete({ selectedYear = '' }) {
   return (
     <MemberTableLayout
       title="E-Filing Accepted & Filing Complete"

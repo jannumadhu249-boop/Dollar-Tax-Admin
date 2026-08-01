@@ -553,12 +553,12 @@ import {
   Monitor, 
   Paperclip, 
   AlertTriangle,
-  Search, PhoneCall, FileUp, Send, Mail, NotebookPen
+  Search, PhoneCall, FileUp, Send, Mail, NotebookPen, Settings
 } from 'lucide-react';
 import { URLS } from '../url';
 import { INITIAL_MEMBERS } from '../data/mockMembers';
 
-export default function Sidebar({ selectedYear = 'TY2025', currentFilter = 'all-registered', onFilterChange }) {
+export default function Sidebar({ selectedYear = '', currentFilter = 'all-registered', onFilterChange }) {
   const [openMenus, setOpenMenus] = useState({
     preprocessing: false,
     preparation: false,
@@ -708,7 +708,7 @@ export default function Sidebar({ selectedYear = 'TY2025', currentFilter = 'all-
     'preparation-2': 'PP_II',
     'review-summary-1': 'TR_S_I',
     'review-summary-2': 'TR_S_II',
-    'itin-files': 'RE_ES',
+    'itin-files': 'ITIN',
     'revised-estimate': 'RE_ES',
     'payment-pending-efiling': 'PP_EF',
     'payable-pending-paper-filing': 'PP_PF',
@@ -1271,6 +1271,57 @@ export default function Sidebar({ selectedYear = 'TY2025', currentFilter = 'all-
             <span className="uppercase-label">NOTES</span>
           </div>
         </button>
+
+        {/* Settings */}
+        <div className="sidebar-dropdown-group">
+          <button 
+            className="sidebar-menu-btn dropdown-trigger"
+            onClick={() => toggleMenu('settings')}
+          >
+            <div className="menu-btn-left">
+              <Settings size={16} className="menu-icon" />
+              <span className="uppercase-label">SETTINGS</span>
+            </div>
+            <ChevronDown size={14} className={`dropdown-arrow ${openMenus.settings ? 'open' : ''}`} />
+          </button>
+
+          {openMenus.settings && (
+            <div className="sidebar-submenu">
+              <button 
+                className={`submenu-item ${currentFilter === 'status' ? 'active' : ''}`}
+                onClick={() => handleItemClick('status')}
+              >
+                <div className="menu-btn-left">
+                  <ChevronRight size={12} className="chevron-bullet" />
+                  <span>File Status Content</span>
+                </div>
+                {/* <span className="sidebar-badge">{getCount('paper-filing-pending')}</span> */}
+              </button>
+
+              <button 
+                className={`submenu-item ${currentFilter === 'users' ? 'active' : ''}`}
+                onClick={() => handleItemClick('users')}
+              >
+                <div className="menu-btn-left">
+                  <ChevronRight size={12} className="chevron-bullet" />
+                  <span>Users</span>
+                </div>
+                {/* <span className="sidebar-badge">{getCount('paper-filing-pending')}</span> */}
+              </button>
+
+              <button 
+                className={`submenu-item ${currentFilter === 'roles-and-permissions' ? 'active' : ''}`}
+                onClick={() => handleItemClick('roles-and-permissions')}
+              >
+                <div className="menu-btn-left">
+                  <ChevronRight size={12} className="chevron-bullet" />
+                  <span>Roles and Permissions</span>
+                </div>
+                {/* <span className="sidebar-badge">{getCount('paper-filing-accepted-complete')}</span> */}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </aside>
   );

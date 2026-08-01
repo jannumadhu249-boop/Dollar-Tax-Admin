@@ -1,7 +1,7 @@
 import React from 'react';
 import MemberTableLayout from '../../components/MemberTableLayout';
 
-export default function SchedulingPending({ selectedYear = 'TY2025' }) {
+export default function SchedulingPending({ selectedYear = '' }) {
   return (
     <MemberTableLayout
       title="Scheduling Pending"

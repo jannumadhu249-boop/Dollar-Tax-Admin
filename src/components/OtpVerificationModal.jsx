@@ -9,7 +9,7 @@ export default function OtpVerificationModal({
   targetField = "Email Address" 
 }) {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [timeLeft, setTimeLeft] = useState(120); // 2 minutes countdown (120 seconds)
+  const [timeLeft, setTimeLeft] = useState(120);
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');

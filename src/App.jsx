@@ -17,7 +17,7 @@ import Leads from './pages/Leads';
 import SendMail from './pages/SendMail';
 import MNote from './pages/MNote';
 import Mailgun from './pages/Mailgun';
-import ReferralsReport from './pages/ReferralsReport';
+import ReferralsReport from './pages/ReferralReport/ReferralsReport';
 import PaymentsReport from './pages/PaymentsReport';
 import ClientSearch from './pages/ClientSearch';
 import ClientStage from './pages/ClientStage';
@@ -115,7 +115,7 @@ export default function App() {
   });
 
   const [activeTab, setActiveTab] = useState('members');
-  const [selectedYear, setSelectedYear] = useState('TY2025');
+  const [selectedYear, setSelectedYear] = useState('');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import MemberTableLayout from '../../components/MemberTableLayout';
 
-export default function PaymentPendingPaperFiling({ selectedYear = 'TY2025' }) {
+export default function PaymentPendingPaperFiling({ selectedYear = '' }) {
   return (
     <MemberTableLayout
       title="Payment Pending - Paper filing"

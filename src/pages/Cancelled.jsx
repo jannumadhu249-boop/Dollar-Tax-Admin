@@ -1,7 +1,7 @@
 import React from 'react';
 import MemberTableLayout from '../components/MemberTableLayout';
 
-export default function Cancelled({ selectedYear = 'TY2025' }) {
+export default function Cancelled({ selectedYear = '' }) {
   return (
     <MemberTableLayout
       title="Cancelled"

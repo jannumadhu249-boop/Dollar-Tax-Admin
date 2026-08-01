@@ -1,7 +1,7 @@
 import React from 'react';
 import MemberTableLayout from '../../components/MemberTableLayout';
 
-export default function FeePaymentReceived1({ selectedYear = 'TY2025' }) {
+export default function FeePaymentReceived1({ selectedYear = '' }) {
   return (
     <MemberTableLayout
       title="Fee Payment Received - I"

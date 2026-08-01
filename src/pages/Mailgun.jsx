@@ -155,7 +155,7 @@ function CKEditorField({ id, initialData, onChange }) {
 /* ─────────────────────────────────────────────────────────────
    Main Mailgun Component
 ───────────────────────────────────────────────────────────── */
-export default function Mailgun({ selectedYear = 'TY2025' }) {
+export default function Mailgun({ selectedYear = '' }) {
   const [excelFile, setExcelFile] = useState(null);
   const [subject, setSubject] = useState('');
   const [editorContent, setEditorContent] = useState(EMAIL_TEMPLATE);

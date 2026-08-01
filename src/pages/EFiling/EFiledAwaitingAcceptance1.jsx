@@ -1,7 +1,7 @@
 import React from 'react';
 import MemberTableLayout from '../../components/MemberTableLayout';
 
-export default function EFiledAwaitingAcceptance1({ selectedYear = 'TY2025' }) {
+export default function EFiledAwaitingAcceptance1({ selectedYear = '' }) {
   return (
     <MemberTableLayout
       title="E - Filed & Awaiting Acceptance - 1"

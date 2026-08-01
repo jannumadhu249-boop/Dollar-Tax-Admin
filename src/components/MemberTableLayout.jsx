@@ -489,6 +489,12 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
   const [profileData, setProfileData] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
+    // Payment state (for Pay tab)
+    const [payAmount, setPayAmount] = useState('');
+    const [paymentLoading, setPaymentLoading] = useState(false);
+    const [paymentSuccess, setPaymentSuccess] = useState('');
+    const [paymentError, setPaymentError] = useState('');
+
   // Document Upload State
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadDocName, setUploadDocName] = useState('');
@@ -497,7 +503,13 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
   const [uploadError, setUploadError] = useState('');
   const [uploadSuccess, setUploadSuccess] = useState('');
   const fileInputRef = useRef(null);
-  
+
+  // ---- Admin uploaded documents (fetched separately) ----
+  const [adminUploadedDocs, setAdminUploadedDocs] = useState([]);
+  const [loadingAdminDocs, setLoadingAdminDocs] = useState(false);
+
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   // Track admin-uploaded document IDs to persist the flag even after re-fetch
   const [adminUploadedDocIds, setAdminUploadedDocIds] = useState(new Set());
 
@@ -507,6 +519,131 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
     'revised_tax_summary': '6a6347ea89dab88326cf8236',
     'tax_review_copy': '6a6347ea89dab88326cf8237',
     'filed_return_for_records': '6a6347ea89dab88326cf8238'
+  };
+
+    // Payment handler
+  const handlePay = () => {
+    if (!payAmount || parseFloat(payAmount) <= 0) {
+      setPaymentError('Please enter a valid amount.');
+      return;
+    }
+    setPaymentError('');
+    setPaymentLoading(true);
+    setPaymentSuccess('');
+    // Simulate payment processing
+    setTimeout(() => {
+      setPaymentLoading(false);
+      setPaymentSuccess(`Payment of $${payAmount} processed successfully!`);
+      setPayAmount('');
+      setTimeout(() => setPaymentSuccess(''), 4000);
+    }, 1500);
+  };
+
+  const handleResetPay = () => {
+    setPayAmount('');
+    setPaymentError('');
+  };
+
+  // Add Payment
+const handleAddPayment = async () => {
+  if (!payAmount || parseFloat(payAmount) <= 0) {
+    setPaymentError('Please enter a valid amount.');
+    return;
+  }
+  setPaymentError('');
+  setPaymentLoading(true);
+  setPaymentSuccess('');
+
+  try {
+    const token = getAuthToken();
+    const memberId = member._id || member.sNo;
+    const res = await fetch(`${URLS.PayAmount}${memberId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ amount: parseFloat(payAmount) }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      setPaymentSuccess(data.message || 'Payment added successfully!');
+      setPayAmount('');
+      // Refresh payment history
+      fetchPaymentHistory();
+    } else {
+      setPaymentError(data.message || 'Failed to add payment.');
+    }
+  } catch (err) {
+    console.error('Add payment error:', err);
+    setPaymentError('Network error. Please try again.');
+  } finally {
+    setPaymentLoading(false);
+  }
+};
+
+// Fetch Payment History
+const [paymentHistory, setPaymentHistory] = useState([]);
+const [loadingPaymentHistory, setLoadingPaymentHistory] = useState(false);
+
+const fetchPaymentHistory = async () => {
+  const memberId = member._id || member.sNo;
+  if (!memberId) return;
+  setLoadingPaymentHistory(true);
+  try {
+    const token = getAuthToken();
+    const res = await fetch(`${URLS.GetPayList}${memberId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const data = await res.json();
+    if (data.success) {
+      setPaymentHistory(data.data || []);
+    } else {
+      console.warn('Failed to fetch payment history:', data.message);
+    }
+  } catch (err) {
+    console.error('Fetch payment history error:', err);
+  } finally {
+    setLoadingPaymentHistory(false);
+  }
+};
+
+// Fetch payment history when component mounts or member changes
+useEffect(() => {
+  if (member._id || member.sNo) {
+    fetchPaymentHistory();
+  }
+}, [member]);
+
+  // ---- Fetch admin‑uploaded documents ----
+  const fetchAdminUploadedDocs = async (memberId) => {
+    if (!memberId) return;
+    setLoadingAdminDocs(true);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`${URLS.GetUploadList}${memberId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const result = await res.json();
+      if (result.success && Array.isArray(result.data)) {
+        setAdminUploadedDocs(result.data);
+      } else {
+        setAdminUploadedDocs([]);
+      }
+    } catch (err) {
+      console.warn('⚠️ Fetch admin documents error:', err);
+      setAdminUploadedDocs([]);
+    } finally {
+      setLoadingAdminDocs(false);
+    }
   };
 
   const handleUploadDocument = async (e) => {
@@ -541,13 +678,13 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
 
       const endpoint = `${URLS.UploadDocuments}${userId}`;
 
-      console.log('📤 Uploading document:', {
-        userId,
-        docType: uploadDocTypeId,
-        docTypeId: docTypeIdToSend,
-        fileName: uploadFile.name,
-        docName: uploadDocName.trim() || uploadFile.name
-      });
+      // console.log('📤 Uploading document:', {
+      //   userId,
+      //   docType: uploadDocTypeId,
+      //   docTypeId: docTypeIdToSend,
+      //   fileName: uploadFile.name,
+      //   docName: uploadDocName.trim() || uploadFile.name
+      // });
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -559,34 +696,20 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
 
       const result = await res.json();
 
-      console.log('📥 Upload response:', { status: res.status, result });
+      // console.log('📥 Upload response:', { status: res.status, result });
 
       if (res.ok && result.success) {
         setUploadSuccess(result.message || 'Document uploaded successfully.');
-        setTimeout(() => {
-          setUploadSuccess('');
-        }, 4000);
-        
-        if (result.data) {
-          const newUploadedDoc = {
-            ...result.data,
-            new_docs: true,
-            isAdminUploaded: true
-          };
-          setProfileData(prev => ({
-            ...prev,
-            documents: [newUploadedDoc, ...(prev?.documents || [])]
-          }));
-        }
-
+        await fetchAdminUploadedDocs(userId);
+        await fetchMemberProfile(userId);
         setUploadFile(null);
         setUploadDocName('');
         setUploadDocTypeId('');
         if (fileInputRef.current) fileInputRef.current.value = '';
+        setTimeout(() => setUploadSuccess(''), 4000);
       } else {
         const errorMsg = result.message || result.error || `Failed to upload document (${res.status})`;
         setUploadError(errorMsg);
-        console.error('❌ Upload error:', { status: res.status, result });
       }
     } catch (err) {
       console.error('❌ Upload document error:', err);
@@ -606,13 +729,54 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
     setStatusInput(member.status || 'EFA_FC');
   }, [member]);
 
-  const handleDeleteDoc = (docId) => {
-    if (!window.confirm('Are you sure you want to delete this document?')) return;
-    setProfileData(prev => ({
-      ...prev,
-      documents: (prev?.documents || []).filter(d => (d._id || d.id) !== docId)
-    }));
-  };
+const handleDeleteDoc = async (docId) => {
+  if (!window.confirm('Are you sure you want to delete this document?')) return;
+
+  setDeleteLoading(true);
+  setUploadError('');
+  setUploadSuccess('');
+
+  try {
+    const token = getAuthToken();
+    const memberId = member._id || member.sNo;
+
+    const res = await fetch(`${URLS.DeleteUploads}${docId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const result = await res.json();
+
+    if (res.ok && result.success) {
+      setUploadSuccess('Document deleted successfully.');
+
+      // 1. Remove from adminUploadedDocs list (Upload tab)
+      setAdminUploadedDocs(prev => prev.filter(doc => (doc._id || doc.id) !== docId));
+
+      // 2. Also remove from profileData.documents (if present)
+      setProfileData(prev => ({
+        ...prev,
+        documents: (prev?.documents || []).filter(d => (d._id || d.id) !== docId)
+      }));
+
+      // Optional: re‑fetch both lists to guarantee consistency
+      // await fetchAdminUploadedDocs(memberId);
+      // await fetchMemberProfile(memberId);
+
+      setTimeout(() => setUploadSuccess(''), 4000);
+    } else {
+      setUploadError(result.message || 'Failed to delete document.');
+    }
+  } catch (err) {
+    console.error('Delete error:', err);
+    setUploadError(err.message || 'Network error occurred during deletion.');
+  } finally {
+    setDeleteLoading(false);
+  }
+};
 
   // File Info (Member Status) State & API Handlers
   const [statusHistory, setStatusHistory] = useState([]);
@@ -628,33 +792,33 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
 
   // Status name to code mapping
   const STATUS_CODE_MAP = {
-    'Registered Users': 'RU',
+    'Registered Users': 'RGO',
     'Scheduling Pending': 'SP',
-    'Information Pending': 'IP',
-    'Interview Pending': 'INP',
+    'Information Pending': 'BIP',
+    'Interview Pending': 'IP',
     'Documents Pending': 'DP',
-    'Preparation - 1': 'PREP1',
-    'Preparation - 2': 'PREP2',
-    'Review & Summary 1': 'RS1',
-    'Review & Summary 2': 'RS2',
+    'Preparation Pending - I': 'PP_I',
+    'Preparation Pending - II': 'PP_II',
+    'Review & Summary I': 'TR_S_I',
+    'Review & Summary II': 'TR_S_II',
     'ITIN Files': 'ITIN',
-    'Revised Estimate': 'RE',
-    'Payment Pending - Efiling': 'PPE',
-    'Payment Pending - Paper filing': 'PPP',
-    'Fee Payment Received - I': 'FPR1',
-    'Fee Payment Received - II': 'FPR2',
-    'Client Review - Efiling': 'CRE',
-    'Client Review - Paper Filing': 'CRP',
-    'Efiling Pending - 1': 'EP1',
-    'Efiling Pending - 2': 'EP2',
-    'E - Filed & Awaiting Acceptance - 1': 'EFA1',
-    'E - Filed & Awaiting Acceptance - 2': 'EFA2',
-    'E - Filed & Rejected': 'EFR',
-    'City Return': 'CR',
+    'Revised Estimate': 'RE_ES',
+    'Payment Pending - Efiling': 'PP_EF',
+    'Payment Pending - Paper filing': 'PP_PF',
+    'Fee Payment Received - I': 'FPR',
+    'Fee Payment Received - II': 'FPR_2',
+    'Client Review - Efiling': 'CR_EF',
+    'Client Review - Paper Filing': 'CR_PF',
+    'Efiling Pending - I': 'EFP_I',
+    'Efiling Pending - II': 'EFP_II',
+    'E - Filed & Awaiting Acceptance - I': 'EF_AA_I',
+    'E - Filed & Awaiting Acceptance - II': 'EF_AA_II',
+    'E - Filed & Rejected': 'EF_REJ',
+    'City Return': 'C_R',
     'E-Filing Accepted & Filing Complete': 'EFA_FC',
-    'Paper Filing Pending': 'PFP',
-    'Paper Filing Done': 'PFD',
-    'Cancelled': 'CAN'
+    'Paper Filing Pending': 'PF_P',
+    'Paper Filing Done': 'PF_D',
+    'Cancelled': 'CANC'
   };
 
   const fetchFileInfoHistory = async () => {
@@ -672,7 +836,6 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
       });
       if (res.ok) {
         const result = await res.json();
-        console.log('📥 Fetched File Info History:', result);
         
         if (result.success) {
           if (Array.isArray(result.history)) {
@@ -729,7 +892,7 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
       
       const payload = {
         file_type: fileTypeInput || member.filingType || '',
-        status: statusCode, // Send status code instead of name
+        status: statusCode,
         comments: commentsInput.trim()
       };
 
@@ -751,7 +914,7 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
 
       const result = await res.json();
 
-      console.log('📥 API Response:', { status: res.status, result });
+      // console.log('📥 API Response:', { status: res.status, result });
 
       if (res.ok && result.success) {
         setFileInfoSuccessMsg(result.message || 'Member status updated successfully.');
@@ -777,8 +940,7 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
         }
         
         // Also refresh the complete history from the server
-        console.log('🔄 Refreshing complete status history...');
-        setTimeout(() => fetchFileInfoHistory(), 500); // Small delay to ensure DB is updated
+        setTimeout(() => fetchFileInfoHistory(), 500);
       } else {
         const errorMsg = result.message || result.error || `Failed to update member status (${res.status})`;
         setFileInfoErrorMsg(errorMsg);
@@ -822,10 +984,6 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
                 : []
             };
             
-            console.log('📥 Fetched member profile, documents:', processedData.documents.length);
-            console.log('📊 Admin docs:', processedData.documents.filter(d => d.isAdminUploaded).length);
-            console.log('📊 Member docs:', processedData.documents.filter(d => !d.isAdminUploaded).length);
-            
             setProfileData(processedData);
           }
         }
@@ -838,6 +996,24 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
     fetchMemberProfile();
     return () => { isMounted = false; };
   }, [member]);
+
+  // ---- Fetch admin docs when member changes ----
+  useEffect(() => {
+    const memberId = member._id || member.sNo;
+    if (memberId) {
+      fetchAdminUploadedDocs(memberId);
+    }
+  }, [member]);
+
+  // ---- Also fetch when upload tab becomes active ----
+  useEffect(() => {
+    if (activeTab === 'upload') {
+      const memberId = member._id || member.sNo;
+      if (memberId) {
+        fetchAdminUploadedDocs(memberId);
+      }
+    }
+  }, [activeTab]);
 
   const details = getMemberDetails(member);
   const history = commentsHistory?.[member.sNo || member._id] || [
@@ -1009,7 +1185,9 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
                         { label: 'CONTACT NUMBER', value: profileData?.personalInfo?.contact_number || member.raw?.contact_number || '—', masked: true, requiresOtp: true, isPhone: true, isContact: true, key: `${member._id || member.sNo}_phone` },
                         { label: 'ALTERNATE NUMBER', value: profileData?.personalInfo?.alternate_number || member.raw?.alter_number || '—' },
                         { label: 'TIME ZONE', value: profileData?.personalInfo?.timezone || member.raw?.time_zone || '—' },
-                        { label: 'SSN / TIN TYPE', value: profileData?.personalInfo?.ssn_tin || member.raw?.file_type || member.filingType || '—' },
+                        { label: 'SSN / TIN TYPE', value: profileData?.personalInfo?.ssn_tin
+                          //  || member.raw?.file_type || member.filingType
+                            || '—' },
                         { label: 'DATE OF BIRTH', value: profileData?.personalInfo?.date_of_birth ? new Date(profileData.personalInfo.date_of_birth).toLocaleDateString() : '—' },
                         { label: 'OCCUPATION', value: profileData?.personalInfo?.occupation || '—' },
                         { label: 'GENDER', value: profileData?.personalInfo?.gender || '—' },
@@ -1077,7 +1255,7 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
                       ['OCCUPATION', profileData.spouseInfo.occupation],
                       ['VISA TYPE', profileData.spouseInfo.visa_type],
                       ['TAX ID TYPE', profileData.spouseInfo.tax_id_type],
-                      ['SSN / ITIN', profileData.spouseInfo.ssn_itin],
+                      ['SSN / ITIN', profileData.spouseInfo.ssn_tin],
                       ['PASSPORT NUMBER', profileData.spouseInfo.passport_number],
                       ['PASSPORT EXPIRY DATE', profileData.spouseInfo.passport_expiry_date ? new Date(profileData.spouseInfo.passport_expiry_date).toLocaleDateString() : ''],
                       ['VISA NUMBER', profileData.spouseInfo.visa_number],
@@ -1405,8 +1583,6 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
                   return !isAdmin;
                 });
                 
-                console.log('📥 Download tab - All docs:', allDocs.length, '| Member docs:', memberDocs.length, '| Admin docs:', allDocs.length - memberDocs.length);
-                
                 return memberDocs.length > 0 ? (
                   <div className="table-responsive">
                     <table className="corporate-table">
@@ -1444,10 +1620,10 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
                                   href={fullUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="btn-view-action"
+                                  className="btn-view-action btn-md"
                                   style={{ padding: '5px 12px', fontSize: '12px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                                 >
-                                  <Download size={13} /> Download
+                                  <Download size={13} />
                                 </a>
                               </td>
                             </tr>
@@ -1530,33 +1706,146 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
           )}
 
           {/* ── Pay ── */}
-          {activeTab === 'pay' && (
-            <div style={{ border: '1px solid var(--border-light)', padding: '20px', borderRadius: 'var(--radius-sm)', background: '#fff' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
-                <div style={{ background: '#dcfce7', color: '#16a34a', padding: '9px', borderRadius: '8px', display: 'flex' }}>
-                  <CreditCard size={20} />
-                </div>
-                <div>
-                  <h4 style={{ fontWeight: 'bold', margin: 0, fontSize: '15px', color: '#0f172a' }}>Billing & Invoices</h4>
-                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>Payment history and invoice details</p>
-                </div>
-              </div>
-              <div className="table-responsive">
-                <table className="corporate-table">
-                  <thead><tr><th>Invoice No</th><th>Amount</th><th>Payment Status</th><th>Payment Date</th><th>Action</th></tr></thead>
-                  <tbody>
-                    <tr>
-                      <td>INV-2026-901</td><td>$150.00</td>
-                      <td><span style={{ color: 'var(--color-darkgreen-btn)', fontWeight: 'bold' }}>PAID</span></td>
-                      <td>2026-06-05</td>
-                      <td><button className="btn-view-action" style={{ padding: '4px 8px', fontSize: '12px' }}
-                        onClick={() => alert('Receipt generated.')}>Receipt</button></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+        {activeTab === 'pay' && (
+  <div style={{ border: '1px solid var(--border-light)', padding: '20px', borderRadius: 'var(--radius-sm)', background: '#fff' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+      <div style={{ background: '#dcfce7', color: '#16a34a', padding: '9px', borderRadius: '8px', display: 'flex' }}>
+        <CreditCard size={20} />
+      </div>
+      <div>
+        <h4 style={{ fontWeight: 'bold', margin: 0, fontSize: '15px', color: '#0f172a' }}>Billing & Invoices</h4>
+        <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>Payment history and invoice details</p>
+      </div>
+    </div>
+
+    {/* Add Payment Form */}
+    <div style={{ marginTop: '24px', padding: '20px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+      <h5 style={{ fontWeight: 'bold', fontSize: '14px', margin: '0 0 12px 0', color: '#0f172a' }}>Make a Payment</h5>
+      {paymentSuccess && (
+        <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#047857', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+          <CheckCircle size={16} /> {paymentSuccess}
+        </div>
+      )}
+      {paymentError && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', marginBottom: '12px' }}>
+          ⚠️ {paymentError}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <div style={{ width: '240px', flexShrink: 0 }}>
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Amount ($)</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0.01"
+            value={payAmount}
+            onChange={e => setPayAmount(e.target.value)}
+            placeholder="0.00"
+            style={{
+              width: '100%',
+              padding: '9px 12px',
+              border: '1px solid #cbd5e1',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontFamily: 'monospace',
+              outline: 'none',
+              boxSizing: 'border-box'
+            }}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={handleAddPayment}
+            disabled={paymentLoading}
+            style={{
+              padding: '9px 24px',
+              background: '#0076a3',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: '600',
+              cursor: paymentLoading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              opacity: paymentLoading ? 0.7 : 1,
+              boxShadow: '0 2px 4px rgba(0,118,163,0.2)'
+            }}
+          >
+            {paymentLoading ? <Loader2 size={16} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} /> : <CreditCard size={16} />}
+            {paymentLoading ? 'Processing...' : 'Pay Now'}
+          </button>
+          <button
+            onClick={() => { setPayAmount(''); setPaymentError(''); }}
+            disabled={paymentLoading}
+            style={{
+              padding: '9px 20px',
+              background: '#e2e8f0',
+              color: '#475569',
+              border: '1px solid #cbd5e1',
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+    </div>
+
+    {/* Payment History Table */}
+    <div className="table-responsive" style={{ marginTop: '24px' }}>
+      <h5 style={{ fontWeight: 'bold', fontSize: '14px', margin: '0 0 12px 0', color: '#0f172a' }}>
+        Payment History {loadingPaymentHistory && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite', marginLeft: '8px' }} />}
+      </h5>
+      {paymentHistory.length === 0 ? (
+        <p style={{ color: '#64748b', textAlign: 'center', padding: '20px' }}>No payments recorded yet.</p>
+      ) : (
+        <table className="corporate-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+          <thead>
+            <tr>
+              <th>Sl.No</th>
+              <th>Amount</th>
+              <th>Paid Amount</th>
+              <th>Year</th>
+              <th>Status</th>
+              <th>Payment Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paymentHistory.map((p, idx) => (
+              <tr key={p._id}>
+                <td>{idx + 1}</td>
+                <td>${p.amount}</td>
+                <td>${p.paid_amount || 0}</td>
+                <td>{p.year_id?.name || p.year || '—'}</td>
+                <td>
+                  <span style={{
+                    padding: '4px 10px',
+                    borderRadius: '12px',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    background: p.status === 1 ? '#dcfce7' : '#fef3c7',
+                    color: p.status === 1 ? '#15803d' : '#92400e',
+                  }}>
+                    {p.status === 1 ? 'Paid' : 'Pending'}
+                  </span>
+                </td>
+                <td>{p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  </div>
+)}
 
           {/* ── Upload ── */}
           {activeTab === 'upload' && (
@@ -1729,72 +2018,69 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
                 </div>
               </form>
 
-              {/* Uploaded Documents List (Admin Uploaded Only) */}
-              {(() => {
-                const allDocs = profileData?.documents || [];
-                const adminUploadedDocs = allDocs.filter(doc => 
-                  doc.new_docs === true || doc.isAdminUploaded || doc.uploaded_by_admin || doc.admin_upload
-                );
-                
-                console.log('📤 Upload tab - All docs:', allDocs.length, '| Admin docs:', adminUploadedDocs.length);
-                
-                return adminUploadedDocs.length > 0 ? (
-                  <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '1px solid #f1f5f9' }}>
-                    <h4 style={{ fontWeight: 'bold', fontSize: '14px', color: '#0f172a', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ background: '#fff7ed', color: '#ea580c', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>ADMIN UPLOADS</span>
-                      Admin Uploaded Documents History ({adminUploadedDocs.length})
-                    </h4>
-                    <div className="table-responsive">
-                      <table className="corporate-table">
-                        <thead>
-                          <tr>
-                            <th>S.NO</th>
-                            <th>DOCUMENT NAME</th>
-                            <th>FILE NAME</th>
-                            <th>FILE SIZE</th>
-                            <th>UPLOADED DATE</th>
-                            <th>ACTION</th>
+            {/* Admin Uploaded Documents List */}
+            {loadingAdminDocs ? (
+              <div style={{ padding: '15px', textAlign: 'center', color: '#0076a3' }}>
+                <Loader2 size={18} className="animate-spin" style={{ display: 'inline', marginRight: '6px' }} />
+                Loading admin documents...
+              </div>
+            ) : adminUploadedDocs.length > 0 ? (
+              <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '1px solid #f1f5f9' }}>
+                <h4 style={{ fontWeight: 'bold', fontSize: '14px', color: '#0f172a', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ background: '#fff7ed', color: '#ea580c', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>ADMIN UPLOADS</span>
+                  Admin Uploaded Documents History ({adminUploadedDocs.length})
+                </h4>
+                <div className="table-responsive">
+                  <table className="corporate-table">
+                    <thead>
+                      <tr>
+                        <th>S.NO</th>
+                        <th>DOCUMENT NAME</th>
+                        <th>FILE NAME</th>
+                        <th>FILE SIZE</th>
+                        <th>UPLOADED DATE</th>
+                        <th>ACTION</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adminUploadedDocs.map((doc, i) => {
+                        const docName = doc.document_name || doc.original_name || doc.file_name || 'Document';
+                        const fileName = doc.original_name || doc.file_name || '—';
+                        const sizeStr = doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : '—';
+                        const uploadDate = doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : '—';
+                        return (
+                          <tr key={doc._id || i}>
+                            <td>{i + 1}</td>
+                            <td style={{ fontWeight: '600', color: '#0f172a' }}>{docName}</td>
+                            <td style={{ fontSize: '12px', color: '#475569' }}>{fileName}</td>
+                            <td style={{ fontSize: '12px', color: '#64748b' }}>{sizeStr}</td>
+                            <td style={{ fontSize: '12px', color: '#64748b' }}>{uploadDate}</td>
+                            <td>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDoc(doc._id || i)}
+                                style={{
+                                  padding: '4px 10px', fontSize: '12px', border: '1px solid #fecaca',
+                                  background: '#fef2f2', color: '#dc2626', borderRadius: '4px',
+                                  cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                  fontWeight: '600'
+                                }}
+                              >
+                                {deleteLoading ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                              </button>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {adminUploadedDocs.map((doc, i) => {
-                            const docName = doc.document_name || doc.original_name || doc.file_name || 'Document';
-                            const fileName = doc.original_name || doc.file_name || '—';
-                            const sizeStr = doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : '—';
-                            const uploadDate = doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : '—';
-
-                            return (
-                              <tr key={doc._id || i}>
-                                <td>{i + 1}</td>
-                                <td style={{ fontWeight: '600', color: '#0f172a' }}>{docName}</td>
-                                <td style={{ fontSize: '12px', color: '#475569' }}>{fileName}</td>
-                                <td style={{ fontSize: '12px', color: '#64748b' }}>{sizeStr}</td>
-                                <td style={{ fontSize: '12px', color: '#64748b' }}>{uploadDate}</td>
-                                <td>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteDoc(doc._id || i)}
-                                    style={{
-                                      padding: '4px 10px', fontSize: '12px', border: '1px solid #fecaca',
-                                      background: '#fef2f2', color: '#dc2626', borderRadius: '4px',
-                                      cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                      fontWeight: '600'
-                                    }}
-                                  >
-                                    <Trash2 size={13} /> Delete
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ) : null;
-              })()}
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
             </div>
-          )}
+  
 
           {/* ── File Info (Member Status & History) ── */}
           {activeTab === 'fileInfo' && (
@@ -2018,7 +2304,7 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
           )}
 
         </div>
-      </div>
+      {/* </div> */}
 
       <OtpModal
         isOpen={otpOpen}
@@ -2095,7 +2381,7 @@ export default function MemberTableLayout({
   const [pagination, setPagination] = useState({ currentPage: 1, limit: 10, totalRecords: 0, totalPages: 1 });
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState('');
-  const [activeYearId, setActiveYearId] = useState('6a59ede933d5d0234c05b6bf');
+  const [activeYearId, setActiveYearId] = useState('');
 
   // Fetch active year ID based on selectedYear prop (e.g. TY2025 -> 2025)
   useEffect(() => {
@@ -2131,84 +2417,106 @@ export default function MemberTableLayout({
 
   // Fetch registered members from backend API
   useEffect(() => {
-    let isMounted = true;
-    const fetchMembers = async () => {
-      setLoading(true);
-      setApiError('');
-      try {
-        const token = getAuthToken();
-        const filterPayload = statusCode === 'all'
-          ? (activeSubTab === 'New' ? 'new' : (activeSubTab === 'Modified' ? 'modified' : ''))
-          : (activeSubTab === 'Modified' ? 'modified' : 'new');
+  let isMounted = true;
+  const abortController = new AbortController();
 
-        const payload = {
-          page: pagination.currentPage,
-          limit: 10,
-          search: searchTerm || "",
-          year_id: activeYearId || "",
-          filestatus: statusCode === 'all' || !statusCode ? 'all' : statusCode,
-          filter: filterPayload,
-          status_date: filterDate || ""
-        };
+  const fetchMembers = async () => {
+    // Guard: do not fetch until activeYearId is set
+    if (!activeYearId) return;
 
-        const response = await fetch(URLS.GetAllRegistred, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
+    setLoading(true);
+    setApiError('');
+    try {
+      const token = getAuthToken();
+      const filterPayload = statusCode === 'all'
+        ? (activeSubTab === 'New' ? 'new' : (activeSubTab === 'Modified' ? 'modified' : ''))
+        : (activeSubTab === 'Modified' ? 'modified' : 'new');
 
-        if (!response.ok) {
-          throw new Error(`API response error: ${response.status}`);
-        }
+      const payload = {
+        page: pagination.currentPage,
+        limit: 10,
+        search: searchTerm || "",
+        year_id: activeYearId,
+        filestatus: statusCode === 'all' || !statusCode ? 'all' : statusCode,
+        filter: filterPayload,
+        status_date: filterDate || ""
+      };
 
-        const result = await response.json();
-        if (isMounted && result.success) {
-          setIsApiLoaded(true);
-          setCounts(result.counts || {});
-          if (result.pagination) {
-            setPagination(result.pagination);
-          }
-          if (Array.isArray(result.data)) {
-            const mapped = result.data.map(item => ({
-              _id: item._id,
-              sNo: item._id,
-              name: `${item.first_name || ''} ${item.last_name || ''}`.trim() || 'N/A',
-              fileNo: item.file_no ? String(item.file_no) : 'N/A',
-              filingType: item.file_type || item.file_type || 'E-Filing',
-              email: item.email || '',
-              regDate: item.date_created ? new Date(item.date_created).toLocaleString() : '',
-              status: item.filestatus || 'Registered',
-              statusDate: item.date_updated ? new Date(item.date_updated).toLocaleString() : '',
-              year: item.year?.name ? String(item.year.name) : numericYear,
-              raw: item
-            }));
-            setApiMembers(mapped);
-          } else {
-            setApiMembers([]);
-          }
-        } else if (isMounted) {
-          setApiError(result.message || 'Failed to fetch registered members.');
-          setIsApiLoaded(true);
-          setApiMembers([]);
-        }
-      } catch (err) {
-        if (isMounted) {
-          console.error('Fetch members error:', err);
-          setApiError(err.message);
-          setIsApiLoaded(true);
-          setApiMembers([]);
-        }
-      } finally {
-        if (isMounted) setLoading(false);
+      const response = await fetch(URLS.GetAllRegistred, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload),
+        signal: abortController.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
       }
-    };
 
-    fetchMembers();
-    return () => { isMounted = false; };
-  }, [statusCode, activeSubTab, searchTerm, filterDate, pagination.currentPage, selectedYear, activeYearId]);
+      const result = await response.json();
+      if (isMounted && result.success) {
+        setIsApiLoaded(true);
+        setCounts(result.counts || {});
+        if (result.pagination) {
+          setPagination(result.pagination);
+        }
+        if (Array.isArray(result.data)) {
+          const mapped = result.data.map(item => ({
+            _id: item._id,
+            sNo: item._id,
+            name: `${item.first_name || ''} ${item.last_name || ''}`.trim() || 'N/A',
+            fileNo: item.file_no ? String(item.file_no) : 'N/A',
+            filingType: item.file_type || item.file_type || 'E-Filing',
+            email: item.email || '',
+            regDate: item.date_created ? new Date(item.date_created).toLocaleString() : '',
+            status: item.filestatus_name || 'Registered',
+            statusDate: item.date_updated ? new Date(item.date_updated).toLocaleString() : '',
+            year: item.year?.name ? String(item.year.name) : numericYear,
+            raw: item
+          }));
+          setApiMembers(mapped);
+        } else {
+          setApiMembers([]);
+        }
+      } else if (isMounted) {
+        setApiError(result.message || 'Failed to fetch members.');
+        setApiMembers([]);
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError' && isMounted) {
+        console.error('Fetch members error:', err);
+        setApiError(err.message);
+        setApiMembers([]);
+      }
+    } finally {
+      if (isMounted) setLoading(false);
+    }
+  };
+
+  fetchMembers();
+  return () => {
+    isMounted = false;
+    abortController.abort();
+  };
+}, [
+  activeYearId,
+  statusCode,
+  activeSubTab,
+  searchTerm,
+  filterDate,
+  pagination.currentPage,
+
+]);
+
+// Close detail view when any list filter changes
+useEffect(() => {
+  if (selectedMember) {
+    setSelectedMember(null);
+  }
+}, [statusCode, numericYear, activeSubTab, searchTerm, filterDate]);
 
   // Determine list to display (never load static mock data)
   const displayMembers = apiMembers;
@@ -2236,7 +2544,6 @@ export default function MemberTableLayout({
         body: JSON.stringify({ member_id: memberId })
       });
       const data = await res.json();
-      console.log(`📤 Send ${isContact ? 'Contact' : 'Email'} OTP:`, data);
       return data.success;
     } catch (err) {
       console.error('Send OTP error:', err);
@@ -2259,7 +2566,6 @@ export default function MemberTableLayout({
         body: JSON.stringify({ member_id: memberId, otp: otpCode })
       });
       const data = await res.json();
-      console.log(`📥 Verify ${isContact ? 'Contact' : 'Email'} OTP:`, data);
       return data.success;
     } catch (err) {
       console.error('Verify OTP error:', err);
@@ -2305,8 +2611,6 @@ export default function MemberTableLayout({
         return;
       }
       
-      // console.log('📊 Converting', blobOrUrl.length, 'records to Excel format');
-      
       // Prepare data for Excel
       const excelData = blobOrUrl.map(item => ({
         'File No': item.file_no || '',
@@ -2345,15 +2649,13 @@ export default function MemberTableLayout({
       a.click();
       a.remove();
       setTimeout(() => window.URL.revokeObjectURL(url), 2000);
-      
-      // console.log('✅ Excel file downloaded:', a.download);
+
     } else if (typeof blobOrUrl === 'string' && blobOrUrl.length > 0) {
       // Remove hash from URL if present
       let cleanUrl = blobOrUrl;
       if (cleanUrl.includes('#')) {
         const hashIndex = cleanUrl.indexOf('#');
         cleanUrl = cleanUrl.substring(0, hashIndex);
-        // console.log('🧹 Cleaned URL (removed hash):', cleanUrl);
       }
       
       // Make URL absolute if needed
@@ -2361,7 +2663,6 @@ export default function MemberTableLayout({
       if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://') && !fullUrl.startsWith('blob:') && !fullUrl.startsWith('data:')) {
         fullUrl = `${URLS.Base}${fullUrl.startsWith('/') ? fullUrl.slice(1) : fullUrl}`;
       }
-      // console.log('📥 Downloading from URL:', fullUrl);
       
       // Fetch the file and download it
       fetch(fullUrl)
@@ -2427,8 +2728,6 @@ export default function MemberTableLayout({
       
       if (contentType.includes("application/json")) {
         const result = await res.json();
-        // console.log('📥 FULL JSON response:', result);
-        // console.log('📊 Data array length:', Array.isArray(result.data) ? result.data.length : 'Not an array');
         
         if (!result.success) {
           console.error('❌ Export failed:', result.message);
@@ -2444,24 +2743,17 @@ export default function MemberTableLayout({
         const filePath = result.data?.url || result.data?.file || result.data?.filePath || result.download_url || result.file_path || result.file;
         
         if (typeof filePath === 'string' && filePath.length > 0) {
-          // console.log('📥 File path from API:', filePath);
           triggerFileDownload(filePath, `previous_members_except_current.xlsx`);
         } else if (Array.isArray(result.data) && result.data.length > 0) {
-          // console.log('📊 Exporting', result.data.length, 'records as Excel');
           triggerFileDownload(result.data, `previous_members_except_current.xlsx`);
         } else if (typeof result.data === 'string' && result.data.length > 0) {
-          // console.log('📥 String data from API');
           triggerFileDownload(result.data, `previous_members_except_current.xlsx`);
         } else {
-          // console.warn('⚠️ No downloadable data in response');
         }
       } else {
-        // console.log('📥 Blob response, converting to Excel');
         const rawBlob = await res.blob();
-        // console.log('📊 Blob size:', rawBlob.size, 'bytes');
         
         if (rawBlob.size === 0) {
-          // console.warn('⚠️ Blob is empty');
           return;
         }
         
@@ -2475,8 +2767,6 @@ export default function MemberTableLayout({
 
   // API Call: Export Current Year Excel
   const handleExportCurrentYear = async () => {
-    // console.log('📤 Exporting Current Year Members');
-    
     try {
       const token = getAuthToken();
       // Backend expects: search and filestatus only (NO year_id)
@@ -2484,9 +2774,6 @@ export default function MemberTableLayout({
         search: "",
         filestatus: ""
       };
-
-      // console.log('📤 Export payload:', payload);
-      // console.log('📤 API endpoint:', URLS.ExportCurrentYear);
 
       const res = await fetch(URLS.ExportCurrentYear, {
         method: 'POST',
@@ -2497,8 +2784,6 @@ export default function MemberTableLayout({
         body: JSON.stringify(payload)
       });
 
-      // console.log('📥 Export response status:', res.status);
-
       if (!res.ok) {
         const errorText = await res.text();
         console.error('❌ Export error response:', errorText);
@@ -2506,45 +2791,30 @@ export default function MemberTableLayout({
       }
 
       const contentType = res.headers.get("content-type") || "";
-      // console.log('📋 Content-Type:', contentType);
-      
       if (contentType.includes("application/json")) {
         const result = await res.json();
-        // console.log('📥 FULL JSON response:', result);
-        // console.log('📊 Data array length:', Array.isArray(result.data) ? result.data.length : 'Not an array');
-        
         if (!result.success) {
           console.error('❌ Export failed:', result.message);
           return;
         }
-        
         // Check if data is empty
         if (Array.isArray(result.data) && result.data.length === 0) {
-          // console.warn('⚠️ No data returned from API');
           return;
         }
         
         const filePath = result.data?.url || result.data?.file || result.data?.filePath || result.download_url || result.file_path || result.file;
         
         if (typeof filePath === 'string' && filePath.length > 0) {
-          // console.log('📥 File path from API:', filePath);
           triggerFileDownload(filePath, `current_year_members.xlsx`);
         } else if (Array.isArray(result.data) && result.data.length > 0) {
-          // console.log('📊 Exporting', result.data.length, 'records as Excel');
           triggerFileDownload(result.data, `current_year_members.xlsx`);
         } else if (typeof result.data === 'string' && result.data.length > 0) {
-          // console.log('📥 String data from API');
           triggerFileDownload(result.data, `current_year_members.xlsx`);
-        } else {
-          // console.warn('⚠️ No downloadable data in response');
         }
       } else {
-        // console.log('📥 Blob response, converting to Excel');
         const rawBlob = await res.blob();
-        // console.log('📊 Blob size:', rawBlob.size, 'bytes');
         
         if (rawBlob.size === 0) {
-          // console.warn('⚠️ Blob is empty');
           return;
         }
         
@@ -2572,29 +2842,6 @@ export default function MemberTableLayout({
   if (selectedMember) {
     return (
       <div className="content-card">
-        {/* Pill toolbar */}
-        {/* <div className="table-filter-bar">
-          <div className="filter-left-pill-group">
-            <button className="pill-btn new-members" style={{ border: activeSubTab === 'New' ? '2px solid black' : 'none' }}
-              onClick={() => setActiveSubTab(prev => (prev === 'New' ? '' : 'New'))}>New Registered Members</button>
-            <button className="pill-btn modified-members" style={{ border: activeSubTab === 'Modified' ? '2px solid black' : 'none' }}
-              onClick={() => setActiveSubTab(prev => (prev === 'Modified' ? '' : 'Modified'))}>Last Modified Members</button>
-            <span className="pill-badge">Total {totalCount}</span>
-          </div>
-        </div> */}
-
-        {/* Two Excel Download Cards */}
-        {/* <div className="excel-btn-group">
-          <button className="excel-download-btn-card" onClick={handleExportPreviousYear}>
-            <span className="excel-btn-top">⬇ Excel</span>
-            <span className="excel-btn-bottom">Note: Download All members except current year</span>
-          </button>
-          <button className="excel-download-btn-card" onClick={handleExportCurrentYear}>
-            <span className="excel-btn-top">⬇ Excel</span>
-            <span className="excel-btn-bottom">Note: Download All Members current year only</span>
-          </button>
-        </div> */}
-
         <MemberDetailFullPage
           member={selectedMember}
           onBack={() => { setSelectedMember(null); setActiveDetailTab('personal'); }}
@@ -2610,23 +2857,48 @@ export default function MemberTableLayout({
   return (
     <div className="content-card">
       {/* Header Section */}
-      <div className="header-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-light)', paddingBottom: '12px', marginBottom: '20px' }}>
+      <div className="header-section" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: "wrap", alignItems: 'center', gap: "12px", borderBottom: '1px solid var(--border-light)', paddingBottom: '12px', marginBottom: '20px' }}>
         <h2 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>{title}</h2>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        {/* <div className="filter-right-inputs"> */}
+         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', maxWidth: '220px' }}>
+          <input
+            type="text"
+            className="search-input-box"
+            placeholder="Search members..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+          <Search
+              size={16}
+              style={{
+                position: 'absolute',
+                right: '10px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: '#94a3b8',
+                pointerEvents: 'none',
+              }}
+            />
+        </div>
+        {/* </div> */}
+
+        {/* <div style={{ display: 'flex', gap: '8px' }}> */}
           <input
             type="date"
             className="date-picker-box"
             value={filterDate}
             onChange={e => setFilterDate(e.target.value)}
           />
-        </div>
+        {/* </div> */}
+         </div>
       </div>
 
       {/* Ribbon Toolbar */}
-      <div className="table-filter-bar">
-        <div className="filter-left-pill-group">
+      <div className="table-filter-bar" style={{ display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+        <div className="filter-left-pill-group" style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
           <button
-            className="pill-btn new-members"
+            className={`pill-btn new-members ${activeSubTab === 'New' ? 'active' : ''}`}
             style={{ border: activeSubTab === 'New' ? '2px solid black' : 'none' }}
             onClick={() => {
               setActiveSubTab(prev => (prev === 'New' ? '' : 'New'));
@@ -2636,7 +2908,7 @@ export default function MemberTableLayout({
             New Registered Members
           </button>
           <button
-            className="pill-btn modified-members"
+            className={`pill-btn modified-members ${activeSubTab === 'Modified' ? 'active' : ''}`}
             style={{ border: activeSubTab === 'Modified' ? '2px solid black' : 'none' }}
             onClick={() => {
               setActiveSubTab(prev => (prev === 'Modified' ? '' : 'Modified'));
@@ -2647,21 +2919,10 @@ export default function MemberTableLayout({
           </button>
           <span className="pill-badge">Total {totalCount}</span>
         </div>
-        <div className="filter-right-inputs">
-          <div style={{ position: 'relative' }}>
-            <input
-              type="text"
-              className="search-input-box"
-              placeholder="Search members..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
       </div>
 
       {/* Two Excel Download Cards */}
-      <div className="excel-btn-group">
+      <div className="excel-btn-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         <button className="excel-download-btn-card" onClick={handleExportPreviousYear}>
           <span className="excel-btn-top">⬇ Excel</span>
           <span className="excel-btn-bottom">Note: Download All members except current year</span>
