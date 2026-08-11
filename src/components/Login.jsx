@@ -11,6 +11,7 @@ import ForgotPassword from './ForgotPassword';
 // import Register from './Register';
 import AuthAlert from '../pages/AuthAlert';
 import { URLS } from '../url';
+import { resolveStaffPermissions, decodeJwt } from '../utils/permissions';
 
 export default function Login({ onLoginSuccess }) {
   // Tab states: 'login', 'forgot', or 'register'
@@ -145,6 +146,44 @@ export default function Login({ onLoginSuccess }) {
       const token = data.token || data.data?.token;
       if (token) {
         sessionStorage.setItem('adminToken', token);
+      }
+
+      // ── RBAC: decode JWT & extract admin stage ──
+      const payload = token ? decodeJwt(token) : null;
+      const rawStage = (
+        data.data?.admin_stage || 
+        data.data?.adminStage || 
+        data.admin_stage || 
+        data.data?.admin?.admin_stage || 
+        payload?.admin_stage || 
+        payload?.adminStage || 
+        payload?.stage || 
+        'staff'
+      ).toLowerCase();
+
+      const userEmail = (payload?.email || data.data?.email || data.email || username || '').toLowerCase();
+      const isSuperAdminUser = (
+        rawStage === 'super' || 
+        rawStage === 'superadmin' || 
+        userEmail === 'madhumoironix@gmail.com'
+      );
+
+      const adminStage = isSuperAdminUser ? 'super' : 'staff';
+      sessionStorage.setItem('adminStage', adminStage);
+
+      // Store basic admin info
+      const adminInfo = {
+        id: payload?.admin_id || payload?.adminId || payload?.id || '',
+        email: userEmail,
+        stage: adminStage,
+      };
+      sessionStorage.setItem('adminInfo', JSON.stringify(adminInfo));
+
+      // Resolve & store permissions if not super admin
+      if (adminStage !== 'super') {
+        await resolveStaffPermissions(token, URLS.Base, data, payload);
+      } else {
+        sessionStorage.removeItem('adminPermissions');
       }
 
       setShowOtpModal(false);

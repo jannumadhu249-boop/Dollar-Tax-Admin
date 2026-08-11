@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User, Key, LogOut, ChevronDown } from 'lucide-react';
 import logoLg from '../assets/logo-white.png';
 import { URLS } from '../url';
+import { hasViewPermission } from '../utils/permissions';
 
 export default function Navbar({
   activeTab,
@@ -12,7 +13,13 @@ export default function Navbar({
   setIsChangePasswordOpen,
   selectedYear,
   setSelectedYear,
+  userPermissions,
+  onSelectNavbarYear,
 }) {
+  const canView = (filterKey) => {
+    if (userPermissions?.isSuperAdmin) return true;
+    return hasViewPermission(filterKey);
+  };
   const [activeDropdown, setActiveDropdown] = useState(null);
   const navbarRef = useRef(null);
 
@@ -138,8 +145,13 @@ export default function Navbar({
   };
 
   const selectYearAndNavigate = (year, tab) => {
-    if (setSelectedYear) setSelectedYear('TY' + year.name);
-    setActiveTab(tab);
+    const formattedYear = 'TY' + year.name;
+    if (setSelectedYear) setSelectedYear(formattedYear);
+    if (onSelectNavbarYear && tab === 'members') {
+      onSelectNavbarYear(formattedYear);
+    } else {
+      setActiveTab(tab);
+    }
     setActiveDropdown(null);
   };
 
@@ -182,7 +194,6 @@ export default function Navbar({
       <li key={year._id} className="navbar-dropdown-item">
         <button className="navbar-dropdown-btn" onClick={() => onSelect(year)}>
           {year.name}
-          {year.current_year}
         </button>
       </li>
     ));
@@ -204,110 +215,124 @@ export default function Navbar({
       <nav>
         <ul className="navbar-nav">
           {/* Years Dropdown */}
-          <li className="navbar-dropdown-container">
-            <button
-              className={`navbar-link ${activeDropdown === 'years' ? 'active' : ''}`}
-              onClick={() => toggleDropdown('years')}
-            >
-              <span>Years</span>
-              <ChevronDown size={14} />
-            </button>
-            {activeDropdown === 'years' && (
-              <ul className="navbar-dropdown-menu animate-fade-in">
-                {renderYearsList(handleSelectYear)}
-              </ul>
-            )}
-          </li>
+          {canView('all-registered') && (
+            <li className="navbar-dropdown-container">
+              <button
+                className={`navbar-link ${activeDropdown === 'years' ? 'active' : ''}`}
+                onClick={() => toggleDropdown('years')}
+              >
+                <span>Years</span>
+                <ChevronDown size={14} />
+              </button>
+              {activeDropdown === 'years' && (
+                <ul className="navbar-dropdown-menu animate-fade-in">
+                  {renderYearsList(handleSelectYear)}
+                </ul>
+              )}
+            </li>
+          )}
 
           {/* Client Stage */}
-          <li>
-            <button
-              className={`navbar-link ${activeTab === 'client-stage' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab('client-stage');
-                setActiveDropdown(null);
-              }}
-            >
-              Client Stage
-            </button>
-          </li>
+          {canView('client-stage') && (
+            <li>
+              <button
+                className={`navbar-link ${activeTab === 'client-stage' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('client-stage');
+                  setActiveDropdown(null);
+                }}
+              >
+                Client Stage
+              </button>
+            </li>
+          )}
 
           {/* Client Search */}
-          <li className="navbar-dropdown-container">
-            <button
-              className={`navbar-link ${activeDropdown === 'clientSearch' ? 'active' : ''
-                } ${activeTab === 'client-search' ? 'active' : ''}`}
-              onClick={() => toggleDropdown('clientSearch')}
-            >
-              <span>Client Search</span>
-              <ChevronDown size={14} />
-            </button>
-            {activeDropdown === 'clientSearch' && (
-              <ul className="navbar-dropdown-menu animate-fade-in">
-                {renderYearsList(handleSelectClientSearch)}
-              </ul>
-            )}
-          </li>
+          {canView('client-search') && (
+            <li className="navbar-dropdown-container">
+              <button
+                className={`navbar-link ${activeDropdown === 'clientSearch' ? 'active' : ''
+                  } ${activeTab === 'client-search' ? 'active' : ''}`}
+                onClick={() => toggleDropdown('clientSearch')}
+              >
+                <span>Client Search</span>
+                <ChevronDown size={14} />
+              </button>
+              {activeDropdown === 'clientSearch' && (
+                <ul className="navbar-dropdown-menu animate-fade-in">
+                  {renderYearsList(handleSelectClientSearch)}
+                </ul>
+              )}
+            </li>
+          )}
 
           {/* Referrals */}
-          <li className="navbar-dropdown-container">
-            <button
-              className={`navbar-link ${activeDropdown === 'referrals' ? 'active' : ''
-                } ${activeTab === 'referrals' ? 'active' : ''}`}
-              onClick={() => toggleDropdown('referrals')}
-            >
-              <span>Referrals</span>
-              <ChevronDown size={14} />
-            </button>
-            {activeDropdown === 'referrals' && (
-              <ul className="navbar-dropdown-menu animate-fade-in">
-                {renderYearsList(handleSelectReferrals)}
-              </ul>
-            )}
-          </li>
+          {canView('referrals') && (
+            <li className="navbar-dropdown-container">
+              <button
+                className={`navbar-link ${activeDropdown === 'referrals' ? 'active' : ''
+                  } ${activeTab === 'referrals' ? 'active' : ''}`}
+                onClick={() => toggleDropdown('referrals')}
+              >
+                <span>Referrals</span>
+                <ChevronDown size={14} />
+              </button>
+              {activeDropdown === 'referrals' && (
+                <ul className="navbar-dropdown-menu animate-fade-in">
+                  {renderYearsList(handleSelectReferrals)}
+                </ul>
+              )}
+            </li>
+          )}
 
           {/* Referee */}
-          <li>
-            <button
-              className={`navbar-link ${activeTab === 'referee' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab('referee');
-                setActiveDropdown(null);
-              }}
-            >
-              Referee
-            </button>
-          </li>
+          {canView('referee') && (
+            <li>
+              <button
+                className={`navbar-link ${activeTab === 'referee' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('referee');
+                  setActiveDropdown(null);
+                }}
+              >
+                Referee
+              </button>
+            </li>
+          )}
 
           {/* M Note */}
-          <li>
-            <button
-              className={`navbar-link ${activeTab === 'm-note' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab('m-note');
-                setActiveDropdown(null);
-              }}
-            >
-              M Note
-            </button>
-          </li>
+          {(canView('notes') || canView('m-note')) && (
+            <li>
+              <button
+                className={`navbar-link ${activeTab === 'm-note' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('m-note');
+                  setActiveDropdown(null);
+                }}
+              >
+                M Note
+              </button>
+            </li>
+          )}
 
           {/* Payments */}
-          <li className="navbar-dropdown-container">
-            <button
-              className={`navbar-link ${activeDropdown === 'payments' ? 'active' : ''
-                } ${activeTab === 'payments' ? 'active' : ''}`}
-              onClick={() => toggleDropdown('payments')}
-            >
-              <span>Payments</span>
-              <ChevronDown size={14} />
-            </button>
-            {activeDropdown === 'payments' && (
-              <ul className="navbar-dropdown-menu animate-fade-in">
-                {renderYearsList(handleSelectPayments)}
-              </ul>
-            )}
-          </li>
+          {canView('payments') && (
+            <li className="navbar-dropdown-container">
+              <button
+                className={`navbar-link ${activeDropdown === 'payments' ? 'active' : ''
+                  } ${activeTab === 'payments' ? 'active' : ''}`}
+                onClick={() => toggleDropdown('payments')}
+              >
+                <span>Payments</span>
+                <ChevronDown size={14} />
+              </button>
+              {activeDropdown === 'payments' && (
+                <ul className="navbar-dropdown-menu animate-fade-in">
+                  {renderYearsList(handleSelectPayments)}
+                </ul>
+              )}
+            </li>
+          )}
         </ul>
       </nav>
 

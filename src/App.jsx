@@ -3,6 +3,8 @@ import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import Login from './components/Login';
 import ChangePasswordModal from './pages/ChangePasswordModal';
+import { isSuperAdmin, getAdminPermissions, hasViewPermission, getFirstPermittedTab, resolveStaffPermissions, decodeJwt } from './utils/permissions';
+import { URLS } from './url';
 
 // ──────────────────────────────────────────────────────────
 //  Top-level pages
@@ -12,8 +14,7 @@ import ClientTracker from './pages/ClientTracker';
 import DocumentHub from './pages/DocumentHub';
 import CallbackRequests from './pages/CallbackRequests';
 import QueryList from './pages/QueryList';
-import Notes from './pages/Notes';
-import Leads from './pages/Leads';
+import Leads from './pages/Leads/index';
 import SendMail from './pages/SendMail';
 import MNote from './pages/MNote';
 import Mailgun from './pages/Mailgun';
@@ -22,6 +23,14 @@ import PaymentsReport from './pages/PaymentsReport';
 import ClientSearch from './pages/ClientSearch';
 import ClientStage from './pages/ClientStage';
 import RefereeReport from './pages/RefereeReport';
+import UplodedDocs from './pages/JustUploadedDocs';
+
+// ──────────────────────────────────────────────────────────
+//  Administration Pages
+// ──────────────────────────────────────────────────────────
+import DashboardContent from './pages/DashboardContent/DashboardContent';
+import RoleAccess from './pages/RoleAccess/RoleAccess';
+import Staff from './pages/Staff/Staff';
 
 // ──────────────────────────────────────────────────────────
 //  Modular Pages — API integrated with MemberTableLayout
@@ -67,52 +76,86 @@ import EFilingAcceptedComplete from './pages/EFiling/EFilingAcceptedComplete';
 import PaperFilingPending from './pages/PaperFiling/PaperFilingPending';
 import PaperFilingDoneFolder from './pages/PaperFiling/PaperFilingDone';
 
+// Notes Folder
+import Notes from './pages/Notes/Notes';
+
 /* ─────────────────────────────────────────────────────────────
    URL Path → Filter Key mapping (removed # for clean URLs)
 ───────────────────────────────────────────────────────────── */
 const ROUTE_MAP = {
-  'all-registered':                '/all-registered',
-  'registered-users':              '/processing/registered-users',
-  'info-pending':                  '/processing/info-pending',
-  'scheduling-pending':            '/processing/scheduling-pending',
-  'interview-pending':             '/processing/interview-pending',
-  'docs-pending':                  '/processing/document-pending',
-  'preparation-1':                 '/preparation/preparation-1',
-  'preparation-2':                 '/preparation/preparation-2',
-  'review-summary-1':              '/preparation/review-summary-1',
-  'review-summary-2':              '/preparation/review-summary-2',
-  'itin-files':                    '/preparation/itin-files',
-  'revised-estimate':              '/preparation/revised-estimate',
-  'payment-pending-efiling':       '/payment/pending-efiling',
-  'payable-pending-paper-filing':  '/payment/pending-paper-filing',
-  'fee-payment-received-1':        '/payment/fee-received-1',
-  'fee-payment-received-2':        '/payment/fee-received-2',
-  'client-review-efiling':         '/client-review/efiling',
-  'client-review-paper-filing':    '/client-review/paper-filing',
-  'efiling-pending-1':             '/efiling/pending-1',
-  'efiling-pending-2':             '/efiling/pending-2',
-  'efiled-awaiting-1':             '/efiling/awaiting-1',
-  'efiled-awaiting-2':             '/efiling/awaiting-2',
-  'efiled-rejected':               '/efiling/rejected',
-  'city-return':                   '/efiling/city-return',
-  'efiling-accepted-complete':     '/efiling/accepted-complete',
-  'paper-filing-pending':          '/paper-filing/pending',
-  'paper-filing-accepted-complete':'/paper-filing/done',
-  'cancelled':                     '/cancelled',
-  'query-list':                    '/query-list',
-  'call-back-requests':            '/call-back-requests',
-  'just-uploaded-docs':            '/just-uploaded-docs',
-  'send-mail':                     '/send-mail',
-  'm-note':                        '/m-note',
-  'mailgun':                       '/mailgun',
-  'leads':                         '/leads',
-  'notes':                         '/notes',
+  'all-registered': '/all-registered',
+  'registered-users': '/processing/registered-users',
+  'info-pending': '/processing/info-pending',
+  'scheduling-pending': '/processing/scheduling-pending',
+  'interview-pending': '/processing/interview-pending',
+  'docs-pending': '/processing/document-pending',
+  'preparation-1': '/preparation/preparation-1',
+  'preparation-2': '/preparation/preparation-2',
+  'review-summary-1': '/preparation/review-summary-1',
+  'review-summary-2': '/preparation/review-summary-2',
+  'itin-files': '/preparation/itin-files',
+  'revised-estimate': '/preparation/revised-estimate',
+  'payment-pending-efiling': '/payment/pending-efiling',
+  'payable-pending-paper-filing': '/payment/pending-paper-filing',
+  'fee-payment-received-1': '/payment/fee-received-1',
+  'fee-payment-received-2': '/payment/fee-received-2',
+  'client-review-efiling': '/client-review/efiling',
+  'client-review-paper-filing': '/client-review/paper-filing',
+  'efiling-pending-1': '/efiling/pending-1',
+  'efiling-pending-2': '/efiling/pending-2',
+  'efiled-awaiting-1': '/efiling/awaiting-1',
+  'efiled-awaiting-2': '/efiling/awaiting-2',
+  'efiled-rejected': '/efiling/rejected',
+  'city-return': '/efiling/city-return',
+  'efiling-accepted-complete': '/efiling/accepted-complete',
+  'paper-filing-pending': '/paper-filing/pending',
+  'paper-filing-accepted-complete': '/paper-filing/done',
+  'cancelled': '/cancelled',
+  'query-list': '/query-list',
+  'call-back-requests': '/call-back-requests',
+  'just-uploaded-docs': '/just-uploaded-docs',
+  'send-mail': '/send-mail',
+  'm-note': '/m-note',
+  'mailgun': '/mailgun',
+  'leads': '/leads',
+  'notes': '/notes',
+  'dashboard-content': '/settings/dashboard-content',
+  'role-access': '/settings/role-access',
+  'staff': '/settings/staff',
 };
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     return sessionStorage.getItem('isLoggedIn') === 'true';
   });
+
+  // RBAC: load stored permissions on mount (persists across refreshes)
+  const [userPermissions, setUserPermissions] = useState(() => ({
+    isSuperAdmin: isSuperAdmin(),
+    permissions: getAdminPermissions() || [],
+  }));
+
+  // Resolve staff permissions on mount if missing
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    if (!isSuperAdmin()) {
+      const stored = getAdminPermissions();
+      if (!stored || stored.length === 0) {
+        const token = sessionStorage.getItem('adminToken') || localStorage.getItem('adminToken');
+        if (token) {
+          const payload = decodeJwt(token);
+          resolveStaffPermissions(token, URLS.Base, {}, payload).then(perms => {
+            if (perms && perms.length > 0) {
+              setUserPermissions({
+                isSuperAdmin: false,
+                permissions: perms,
+              });
+            }
+          });
+        }
+      }
+    }
+  }, [isLoggedIn]);
 
   const [activeTab, setActiveTab] = useState('members');
   const [selectedYear, setSelectedYear] = useState('');
@@ -143,7 +186,26 @@ export default function App() {
     return () => window.removeEventListener('popstate', updateFromPath);
   }, [isLoggedIn]);
 
+  // Auto-redirect to first permitted tab if current view is restricted
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const currentKey = activeTab === 'members' ? selectedStatus : activeTab;
+    if (!hasViewPermission(currentKey)) {
+      const firstTab = getFirstPermittedTab();
+      if (ROUTE_MAP[firstTab]) {
+        setSelectedStatus(firstTab);
+        setActiveTab('members');
+        window.history.pushState(null, '', ROUTE_MAP[firstTab]);
+      } else {
+        setActiveTab(firstTab);
+        window.history.pushState(null, '', `/${firstTab}`);
+      }
+    }
+  }, [isLoggedIn, userPermissions, selectedStatus, activeTab]);
+
   const handleFilterChange = (statusKey) => {
+    setSelectedYear('');
     setSelectedStatus(statusKey);
     setActiveTab('members');
     if (ROUTE_MAP[statusKey]) {
@@ -152,9 +214,24 @@ export default function App() {
   };
 
   const renderViewContent = () => {
+    // Check permission for active view before rendering
+    const currentKey = activeTab === 'members' ? selectedStatus : activeTab;
+    if (!hasViewPermission(currentKey)) {
+      return (
+        <div style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b' }}>
+          <h3 style={{ color: '#ef4444', marginBottom: '10px', fontSize: '18px', fontWeight: '700' }}>
+            Access Restricted
+          </h3>
+          <p style={{ fontSize: '14px', margin: 0 }}>
+            You do not have permission to view this module.
+          </p>
+        </div>
+      );
+    }
+
     if (activeTab === 'members') {
       switch (selectedStatus) {
-        // ── Default / All Registered ──
+        // ── Default / All Registered — uses the navbar-selected year ──
         case 'all-registered':
           return <AllRegistered selectedYear={selectedYear} />;
 
@@ -237,6 +314,16 @@ export default function App() {
           return <Leads />;
         case 'notes':
           return <Notes />;
+        case 'just-uploaded-docs':
+          return <UplodedDocs />;
+
+        // ── Administration ──
+        case 'dashboard-content':
+          return <DashboardContent />;
+        case 'role-access':
+          return <RoleAccess />;
+        case 'staff':
+          return <Staff />;
 
         default:
           return <AllRegistered selectedYear={selectedYear} />;
@@ -263,6 +350,7 @@ export default function App() {
         return <ClientTracker />;
       case 'documents':
         return <DocumentHub />;
+
       default:
         return <AllRegistered selectedYear={selectedYear} />;
     }
@@ -274,7 +362,21 @@ export default function App() {
         onLoginSuccess={() => {
           setIsLoggedIn(true);
           sessionStorage.setItem('isLoggedIn', 'true');
-          window.history.pushState(null, '', '/all-registered');
+          const superAdmin = isSuperAdmin();
+          const perms = getAdminPermissions() || [];
+          setUserPermissions({
+            isSuperAdmin: superAdmin,
+            permissions: perms,
+          });
+          const firstTab = getFirstPermittedTab();
+          if (ROUTE_MAP[firstTab]) {
+            setSelectedStatus(firstTab);
+            setActiveTab('members');
+            window.history.pushState(null, '', ROUTE_MAP[firstTab]);
+          } else {
+            setActiveTab(firstTab);
+            window.history.pushState(null, '', `/${firstTab}`);
+          }
         }}
       />
     );
@@ -298,12 +400,20 @@ export default function App() {
         setIsChangePasswordOpen={setIsChangePasswordOpen}
         selectedYear={selectedYear}
         setSelectedYear={setSelectedYear}
+        userPermissions={userPermissions}
+        onSelectNavbarYear={(yearStr) => {
+          setSelectedYear(yearStr);
+          setSelectedStatus('all-registered');
+          setActiveTab('members');
+          window.history.pushState(null, '', ROUTE_MAP['all-registered'] || '/all-registered');
+        }}
       />
       <div className="shell-body">
         <Sidebar
           selectedYear={selectedYear}
           currentFilter={selectedStatus}
           onFilterChange={handleFilterChange}
+          userPermissions={userPermissions}
         />
         <main className="main-viewport">
           {renderViewContent()}

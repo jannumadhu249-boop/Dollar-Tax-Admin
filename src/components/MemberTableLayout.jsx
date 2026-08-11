@@ -515,10 +515,10 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
 
   // Document type mapping (string to ID)
   const DOC_TYPE_MAP = {
-    'tax_summary': '6a6347ea89dab88326cf8235',
-    'revised_tax_summary': '6a6347ea89dab88326cf8236',
-    'tax_review_copy': '6a6347ea89dab88326cf8237',
-    'filed_return_for_records': '6a6347ea89dab88326cf8238'
+    'Tax Summary': '',
+    'Revised Tax Summary': '',
+    'Tax Review Copy': '',
+    'Filed Return For Records': ''
   };
 
     // Payment handler
@@ -673,18 +673,10 @@ useEffect(() => {
       
       // Convert string type to ID if needed
       const docTypeIdToSend = DOC_TYPE_MAP[uploadDocTypeId] || uploadDocTypeId;
-      formData.append('document_type_id', docTypeIdToSend);
+      formData.append('document_type', docTypeIdToSend);
       formData.append('document_name', uploadDocName.trim() || uploadFile.name);
 
       const endpoint = `${URLS.UploadDocuments}${userId}`;
-
-      // console.log('📤 Uploading document:', {
-      //   userId,
-      //   docType: uploadDocTypeId,
-      //   docTypeId: docTypeIdToSend,
-      //   fileName: uploadFile.name,
-      //   docName: uploadDocName.trim() || uploadFile.name
-      // });
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -695,8 +687,6 @@ useEffect(() => {
       });
 
       const result = await res.json();
-
-      // console.log('📥 Upload response:', { status: res.status, result });
 
       if (res.ok && result.success) {
         setUploadSuccess(result.message || 'Document uploaded successfully.');
@@ -954,47 +944,47 @@ const handleDeleteDoc = async (docId) => {
     }
   };
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchMemberProfile = async () => {
-      const memberId = member._id || member.sNo;
-      if (!memberId) return;
-      setLoadingProfile(true);
-      try {
-        const token = getAuthToken();
-        const res = await fetch(`${URLS.GetMemberView}${memberId}/profile`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        if (res.ok) {
-          const result = await res.json();
-          if (isMounted && result.success && result.data) {
-            // Mark documents as admin-uploaded if they have the flag from backend
-            const processedData = {
-              ...result.data,
-              documents: Array.isArray(result.data.documents) 
-                ? result.data.documents.map(doc => ({
-                    ...doc,
-                    // Mark as admin upload if backend indicates it, or if it has new_docs flag
-                    isAdminUploaded: doc.isAdminUploaded || doc.new_docs || doc.uploaded_by_admin || doc.admin_upload || false
-                  }))
-                : []
-            };
-            
-            setProfileData(processedData);
-          }
+  // ---- Fetch member profile data ----
+  const fetchMemberProfile = async (targetMemberId) => {
+    const memberId = targetMemberId || member._id || member.sNo;
+    if (!memberId) return;
+    setLoadingProfile(true);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`${URLS.GetMemberView}${memberId}/profile`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      } catch (err) {
-        console.warn('Member profile fetch warning:', err);
-      } finally {
-        if (isMounted) setLoadingProfile(false);
+      });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success && result.data) {
+          // Mark documents as admin-uploaded if they have the flag from backend
+          const processedData = {
+            ...result.data,
+            documents: Array.isArray(result.data.documents) 
+              ? result.data.documents.map(doc => ({
+                  ...doc,
+                  // Mark as admin upload if backend indicates it, or if it has new_docs flag
+                  isAdminUploaded: doc.isAdminUploaded || doc.new_docs || doc.uploaded_by_admin || doc.admin_upload || false
+                }))
+              : []
+          };
+          
+          setProfileData(processedData);
+        }
       }
-    };
+    } catch (err) {
+      console.warn('Member profile fetch warning:', err);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  useEffect(() => {
     fetchMemberProfile();
-    return () => { isMounted = false; };
   }, [member]);
 
   // ---- Fetch admin docs when member changes ----
@@ -1005,13 +995,16 @@ const handleDeleteDoc = async (docId) => {
     }
   }, [member]);
 
-  // ---- Also fetch when upload tab becomes active ----
+  // ---- Also fetch when upload tab becomes active; clear stale alerts ----
   useEffect(() => {
     if (activeTab === 'upload') {
       const memberId = member._id || member.sNo;
       if (memberId) {
         fetchAdminUploadedDocs(memberId);
       }
+      // Clear any stale success/error messages when re-entering the tab
+      setUploadSuccess('');
+      setUploadError('');
     }
   }, [activeTab]);
 
@@ -1871,8 +1864,11 @@ const handleDeleteDoc = async (docId) => {
                 </div>
               )}
               {uploadError && (
-                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', marginBottom: '16px' }}>
-                  ⚠️ {uploadError}
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                  <span>⚠️ {uploadError}</span>
+                  <button onClick={() => setUploadError('')} style={{ background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', padding: '2px', flexShrink: 0 }}>
+                    <X size={14} />
+                  </button>
                 </div>
               )}
 
@@ -1910,10 +1906,10 @@ const handleDeleteDoc = async (docId) => {
                       }}
                     >
                       <option value="">Select Document Type</option>
-                      <option value="tax_summary">Tax Summary</option>
-                      <option value="revised_tax_summary">Revised Tax Summary</option>
-                      <option value="tax_review_copy">Tax Review Copy</option>
-                      <option value="filed_return_for_records">Filed Return For Records</option>
+                      <option value="Tax Summary">Tax Summary</option>
+                      <option value="Revised Tax Summary">Revised Tax Summary</option>
+                      <option value="Tax Review Copy">Tax Review Copy</option>
+                      <option value="Filed Return For Records">Filed Return For Records</option>
                     </select>
                   </div>
                 </div>
@@ -2035,7 +2031,7 @@ const handleDeleteDoc = async (docId) => {
                     <thead>
                       <tr>
                         <th>S.NO</th>
-                        <th>DOCUMENT NAME</th>
+                        <th>DOCUMENT TYPE</th>
                         <th>FILE NAME</th>
                         <th>FILE SIZE</th>
                         <th>UPLOADED DATE</th>
@@ -2044,7 +2040,7 @@ const handleDeleteDoc = async (docId) => {
                     </thead>
                     <tbody>
                       {adminUploadedDocs.map((doc, i) => {
-                        const docName = doc.document_name || doc.original_name || doc.file_name || 'Document';
+                        const docName = doc.document_type || doc.original_name || doc.file_name || 'Document';
                         const fileName = doc.original_name || doc.file_name || '—';
                         const sizeStr = doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : '—';
                         const uploadDate = doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : '—';
@@ -2389,6 +2385,24 @@ export default function MemberTableLayout({
     const fetchYearId = async () => {
       try {
         const token = getAuthToken();
+        if (!numericYear) {
+          // Fetch actual current year from API when no navbar year override is set
+          const currentRes = await fetch(URLS.GetCurrentYear, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          if (currentRes.ok) {
+            const currentResult = await currentRes.json();
+            if (isMounted && currentResult.success && currentResult.data && currentResult.data._id) {
+              setActiveYearId(currentResult.data._id);
+              return;
+            }
+          }
+        }
+
         const res = await fetch(URLS.GetYears, {
           method: 'POST',
           headers: {
@@ -2399,11 +2413,16 @@ export default function MemberTableLayout({
         if (res.ok) {
           const result = await res.json();
           if (isMounted && result.success && Array.isArray(result.data)) {
-            const found = result.data.find(y => String(y.name) === String(numericYear));
-            if (found && found._id) {
-              setActiveYearId(found._id);
-            } else if (result.data.length > 0 && result.data[0]._id) {
-              setActiveYearId(result.data[0]._id);
+            if (numericYear) {
+              const found = result.data.find(y => String(y.name) === String(numericYear));
+              if (found && found._id) {
+                setActiveYearId(found._id);
+                return;
+              }
+            }
+            const activeYear = result.data.find(y => y.current_year === 1 || y.status === 'active') || result.data[0];
+            if (activeYear && activeYear._id) {
+              setActiveYearId(activeYear._id);
             }
           }
         }
@@ -2894,9 +2913,9 @@ useEffect(() => {
          </div>
       </div>
 
-      {/* Ribbon Toolbar */}
+      {/* Ribbon Toolbar & Excel Download Cards on the same equal line */}
       <div className="table-filter-bar" style={{ display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-        <div className="filter-left-pill-group" style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+        <div className="filter-left-pill-group" style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
           <button
             className={`pill-btn new-members ${activeSubTab === 'New' ? 'active' : ''}`}
             style={{ border: activeSubTab === 'New' ? '2px solid black' : 'none' }}
@@ -2919,18 +2938,18 @@ useEffect(() => {
           </button>
           <span className="pill-badge">Total {totalCount}</span>
         </div>
-      </div>
 
-      {/* Two Excel Download Cards */}
-      <div className="excel-btn-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-        <button className="excel-download-btn-card" onClick={handleExportPreviousYear}>
-          <span className="excel-btn-top">⬇ Excel</span>
-          <span className="excel-btn-bottom">Note: Download All members except current year</span>
-        </button>
-        <button className="excel-download-btn-card" onClick={handleExportCurrentYear}>
-          <span className="excel-btn-top">⬇ Excel</span>
-          <span className="excel-btn-bottom">Note: Download All Members current year only</span>
-        </button>
+        {/* Two Excel Download Cards in same row */}
+        <div className="excel-btn-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button className="excel-download-btn-card" onClick={handleExportPreviousYear}>
+            <span className="excel-btn-top">⬇ Excel</span>
+            <span className="excel-btn-bottom">Note: Download All members except current year</span>
+          </button>
+          <button className="excel-download-btn-card" onClick={handleExportCurrentYear}>
+            <span className="excel-btn-top">⬇ Excel</span>
+            <span className="excel-btn-bottom">Note: Download All Members current year only</span>
+          </button>
+        </div>
       </div>
 
       {/* Loading Indicator */}

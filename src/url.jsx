@@ -72,4 +72,45 @@ export const URLS = {
 
     // Client Stage
     GetClientStage : base_url + "v1/minimumTax/admin/stage/getMemberStages",
+
+    // Dashboard Content
+    GetDashboardContent    : base_url + "v1/minimumTax/admin/dashboardContent/getDashboardContents",
+    CreateDashboardContent : base_url + "v1/minimumTax/admin/dashboardContent/addDashboardContent",
+    GetByIdDashboardContent : base_url + "v1/minimumTax/admin/dashboardContent/getDashboardContentById/",
+    UpdateDashboardContent : base_url + "v1/minimumTax/admin/dashboardContent/updateDashboardContent/",
+    DeleteDashboardContent : base_url + "v1/minimumTax/admin/dashboardContent/deleteDashboardContent/",
+
+    // Role Access
+    GetRoles    : base_url + "v1/minimumTax/admin/role/getRoles",
+    GetActiveRoles : base_url + "v1/minimumTax/admin/role/getActiveRoles",
+    CreateRole  : base_url + "v1/minimumTax/admin/role/addRole",
+    GetByIdRole : base_url + "v1/minimumTax/admin/role/getRoleById/",
+    UpdateRole  : base_url + "v1/minimumTax/admin/role/updateRole/",
+    DeleteRole  : base_url + "v1/minimumTax/admin/role/deleteRole/",
+
+    // Staff
+    GetStaff    : base_url + "v1/minimumTax/admin/staff/getStaff",
+    CreateStaff : base_url + "v1/minimumTax/admin/staff/addStaff",
+    GetByIdStaff : base_url + "v1/minimumTax/admin/staff/getStaffById/",
+    UpdateStaff : base_url + "v1/minimumTax/admin/staff/updateStaff/",
+    DeleteStaff : base_url + "v1/minimumTax/admin/staff/deleteStaff/",
+
+    // Leads
+    GetLeads     : base_url + "v1/minimumTax/admin/leads/getLeads",
+    AddLead      : base_url + "v1/minimumTax/admin/leads/addLead",
+    GetLeadById  : base_url + "v1/minimumTax/admin/leads/getLeadById/",
+    UpdateLead   : base_url + "v1/minimumTax/admin/leads/updateLead/",
+
+    // Leads Follow Up
+    GetFollowUpLead : base_url + "v1/minimumTax/admin/followUp/getLeadFollowUps/",
+    CreateFollowUpLead : base_url + "v1/minimumTax/admin/followUp/addFollowup/",
+    UpdateFollowUpLead : base_url + "v1/minimumTax/admin/followUp/updateFollowup/",
+
+    // Notes
+    GetNotes : base_url + "v1/minimumTax/admin/notes/getNotes",
+    CreateNotes : base_url + "v1/minimumTax/admin/notes/addNote",
+    GetByIdNotes : base_url + "v1/minimumTax/admin/notes/getNoteById/",
+    UpdateNotes : base_url + "v1/minimumTax/admin/notes/updateNote/",
+    DeleteNotes : base_url + "v1/minimumTax/admin/notes/deleteNote/",
+
 }
