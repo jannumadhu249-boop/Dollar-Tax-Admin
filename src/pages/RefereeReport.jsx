@@ -50,7 +50,7 @@ export default function RefereeReport() {
   const [pendingItemId, setPendingItemId] = useState(null);
   const [pendingType, setPendingType] = useState(null);
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [timeLeft, setTimeLeft] = useState(120);
+  const [timeLeft, setTimeLeft] = useState(30);
   const [isVerifying, setIsVerifying] = useState(false);
   const [otpError, setOtpError] = useState('');
   const [success, setSuccess] = useState('');
@@ -297,7 +297,7 @@ export default function RefereeReport() {
       setPendingItemId(itemId);
       setPendingType(type);
       setOtp(['', '', '', '', '', '']);
-      setTimeLeft(120);
+      setTimeLeft(30);
       setOtpError('');
       setSuccess('');
       sendOtp(itemId, type);
@@ -319,7 +319,7 @@ export default function RefereeReport() {
 
   const handleResend = () => {
     if (timeLeft > 0) return;
-    setTimeLeft(120);
+    setTimeLeft(30);
     sendOtp(pendingItemId, pendingType);
     setOtp(['', '', '', '', '', '']);
     setSuccess('New verification code sent.');
@@ -381,7 +381,7 @@ export default function RefereeReport() {
   useEffect(() => {
     if (!otpModalOpen) return;
     setOtp(['', '', '', '', '', '']);
-    setTimeLeft(120);
+    setTimeLeft(30);
     setOtpError('');
     setSuccess('');
     const timer = setInterval(() => {
@@ -523,7 +523,7 @@ export default function RefereeReport() {
                           </button>
                         </div>
                       </td>
-                      <td style={{ padding: '10px 12px', color: '#64748b', borderRight: '1px solid #f1f5f9' }}>{r.followUpDate || '—'}</td>
+                      <td style={{ padding: '10px 12px', color: '#64748b', borderRight: '1px solid #f1f5f9' }}>{r.followUpDate ? new Date(r.followUpDate).toLocaleDateString() : '—'}</td>
                       <td style={{ padding: '10px 12px', color: '#64748b', borderRight: '1px solid #f1f5f9' }}>{r.description || '—'}</td>
                       <td style={{ padding: '10px 12px', color: '#64748b', borderRight: '1px solid #f1f5f9' }}>
                         <span style={{

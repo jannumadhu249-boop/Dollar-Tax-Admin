@@ -55,34 +55,77 @@ const STATUS_CODE_MAP = {
   'Information Pending': 'BIP',
   'Interview Pending': 'IP',
   'Documents Pending': 'DP',
-  'Preparation Pending - 1': 'PP_I',
-  'Preparation Pending - 2': 'PP_II',
+
+  // Preparation 1 & 2
+  'Preparation - 1': 'PP_I',
+  'Preparation - 2': 'PP_II',
+
+  // Review & Summary 1 & 2
   'Review & Summary 1': 'TR_S_I',
   'Review & Summary 2': 'TR_S_II',
+
   'ITIN Files': 'ITIN',
   'Revised Estimate': 'RE_ES',
   'Payment Pending - Efiling': 'PP_EF',
   'Payment Pending - Paper filing': 'PP_PF',
+
+  // Fee Payment Received I & II
   'Fee Payment Received - I': 'FPR',
   'Fee Payment Received - II': 'FPR_II',
+
   'Client Review - Efiling': 'CR_EF',
   'Client Review - Paper Filing': 'CR_PF',
+
+  // Efiling Pending 1 & 2
   'Efiling Pending - 1': 'EFP_I',
   'Efiling Pending - 2': 'EFP_II',
+
+  // E - Filed & Awaiting Acceptance 1 & 2
   'E - Filed & Awaiting Acceptance - 1': 'EF_AA_I',
   'E - Filed & Awaiting Acceptance - 2': 'EF_AA_II',
+
   'E - Filed & Rejected': 'EF_REJ',
   'City Return': 'C_R',
   'E-Filing Accepted & Filing Complete': 'EFA_FC',
   'Paper Filing Pending': 'PF_P',
   'Paper Filing Done': 'PF_D',
-  'Cancelled': 'CANC'
+  'Cancelled': 'CANC',
+
+  // Direct code identity mappings
+  'RGO': 'RGO',
+  'SP': 'SP',
+  'BIP': 'BIP',
+  'IP': 'IP',
+  'DP': 'DP',
+  'PP_I': 'PP_I',
+  'PP_II': 'PP_II',
+  'TR_S_I': 'TR_S_I',
+  'TR_S_II': 'TR_S_II',
+  'ITIN': 'ITIN',
+  'RE_ES': 'RE_ES',
+  'PP_EF': 'PP_EF',
+  'PP_PF': 'PP_PF',
+  'FPR': 'FPR',
+  'FPR_II': 'FPR_II',
+  'FPR_2': 'FPR_II',
+  'CR_EF': 'CR_EF',
+  'CR_PF': 'CR_PF',
+  'EFP_I': 'EFP_I',
+  'EFP_II': 'EFP_II',
+  'EF_AA_I': 'EF_AA_I',
+  'EF_AA_II': 'EF_AA_II',
+  'EF_REJ': 'EF_REJ',
+  'C_R': 'C_R',
+  'EFA_FC': 'EFA_FC',
+  'PF_P': 'PF_P',
+  'PF_D': 'PF_D',
+  'CANC': 'CANC'
 };
 
 // -------------------- OTP Modal (fixed: immediate open with success/error props) --------------------
 function OtpModal({ isOpen, onClose, onVerify, onResend, fieldLabel, initialError, initialSuccess }) {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [timeLeft, setTimeLeft] = useState(120);
+  const [timeLeft, setTimeLeft] = useState(30);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [success, setSuccess] = useState('');
@@ -92,7 +135,7 @@ function OtpModal({ isOpen, onClose, onVerify, onResend, fieldLabel, initialErro
   useEffect(() => {
     if (!isOpen) return;
     setOtp(['', '', '', '', '', '']);
-    setTimeLeft(120);
+    setTimeLeft(30);
     setError(initialError || '');
     setSuccess(initialSuccess || '');
 
@@ -127,7 +170,7 @@ function OtpModal({ isOpen, onClose, onVerify, onResend, fieldLabel, initialErro
     setError('');
     try {
       if (onResend) await onResend();
-      setTimeLeft(120);
+      setTimeLeft(30);
       setOtp(['', '', '', '', '', '']);
       setSuccess('New verification code sent.');
     } catch (err) {
@@ -1278,7 +1321,7 @@ const handleDeleteDoc = async (docId) => {
                       { label: 'MIDDLE NAME', value: profileData?.personalInfo?.middle_name || '' },
                       { label: 'LAST NAME', value: profileData?.personalInfo?.last_name || selectedMember.last_name },
                       { label: 'CONTACT NUMBER', value: profileData?.personalInfo?.contact_number || selectedMember.contact_number, masked: true, key: `${selectedMember._id}_contact`, isContact: true },
-                      { label: 'ALTERNATE NUMBER', value: profileData?.personalInfo?.alternate_number || selectedMember.alter_number },
+                      { label: 'ALTERNATE NUMBER', value: profileData?.personalInfo?.alternate_number || selectedMember.alter_number, masked: true, key: `${selectedMember._id}_alter_contact`, isContact: true },
                       { label: 'TIME ZONE', value: profileData?.personalInfo?.timezone || selectedMember.time_zone },
                       { label: 'SSN / TIN TYPE', value: profileData?.personalInfo?.ssn_tin || selectedMember.tin_type },
                       { label: 'DATE OF BIRTH', value: profileData?.personalInfo?.date_of_birth || '—' },

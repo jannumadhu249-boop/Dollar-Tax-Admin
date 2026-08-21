@@ -28,6 +28,9 @@ export default function Navbar({
   const [isLoadingYears, setIsLoadingYears] = useState(false);
   const [yearsError, setYearsError] = useState('');
 
+  // --- Profile State ---
+  const [profileData, setProfileData] = useState(null);
+
   // --- Helper to get the token from any known key ---
   const getAuthToken = () => {
     const possibleKeys = [
@@ -44,6 +47,64 @@ export default function Navbar({
       if (value) return value;
     }
     return null;
+  };
+
+  // --- Fetch employee/admin profile on mount ---
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchProfile = async () => {
+      const token = getAuthToken();
+      if (!token) return;
+
+      try {
+        const response = await fetch(URLS.GetProfile, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          signal: controller.signal,
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            setProfileData(result);
+          }
+        }
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.warn('Profile fetch error:', error);
+        }
+      }
+    };
+
+    fetchProfile();
+    return () => controller.abort();
+  }, []);
+
+  // --- Helper to determine display name for profile trigger ---
+  const getDisplayName = () => {
+    if (userPermissions?.isSuperAdmin) {
+      return 'Admin';
+    }
+
+    if (profileData?.data) {
+      const stage = (profileData.data.admin_stage || '').toLowerCase();
+      if (stage === 'super' || stage === 'superadmin' || profileData.userType === 'admin') {
+        return 'Admin';
+      }
+      const fullName = `${profileData.data.first_name || ''} ${profileData.data.last_name || ''}`.trim();
+      if (fullName) return fullName;
+    }
+
+    const storedStage = (sessionStorage.getItem('adminStage') || '').toLowerCase();
+    if (storedStage === 'super' || storedStage === 'superadmin') {
+      return 'Admin';
+    }
+
+    return 'Staff';
   };
 
   // --- Fetch years on mount ---
@@ -340,11 +401,17 @@ export default function Navbar({
       <div className="profile-dropdown-container">
         <button className="profile-trigger" onClick={handleProfileClick}>
           <User size={16} />
-          <span>Admin</span>
+          <span>{getDisplayName()}</span>
           <ChevronDown size={14} />
         </button>
         {isProfileOpen && (
           <div className="profile-dropdown-menu">
+            {profileData?.data?.email && (
+              <div style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0', fontSize: '12px', color: '#64748b' }}>
+                <strong style={{ display: 'block', color: '#1e293b', fontWeight: '600' }}>{getDisplayName()}</strong>
+                <span>{profileData.data.email}</span>
+              </div>
+            )}
             <button
               className="dropdown-item"
               onClick={() => {

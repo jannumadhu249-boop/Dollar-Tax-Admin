@@ -19,11 +19,11 @@ export default function StaffModal({ isOpen, onClose, onSave, editData, roles })
     lastName: '',
     email: '',
     phone: '',
-    address: '',          // new field
+    address: '',
     role: '',
     password: '',
     isActive: true,
-    adminStage: '',       // will store 'stage1' or 'stage2'
+    adminStage: '',
     adminCode: '',
   });
   const [showPwd, setShowPwd] = useState(false);
@@ -88,6 +88,35 @@ export default function StaffModal({ isOpen, onClose, onSave, editData, roles })
     }
     if (!form.email.trim()) {
       setError('Email is required.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email.trim())) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (!form.phone.trim()) {
+      setError('Phone number is required.');
+      return;
+    }
+    if (!/^\d{10}$/.test(form.phone.trim())) {
+      setError('Phone number must be exactly 10 digits.');
+      return;
+    }
+    if (!form.role) {
+      setError('Role is required.');
+      return;
+    }
+    if (!form.adminStage) {
+      setError('Admin Stage is required.');
+      return;
+    }
+    if (!form.adminCode) {
+      setError('Admin Code is required.');
+      return;
+    }
+    if (!isEdit && !form.password) {
+      setError('Password is required.');
       return;
     }
     setError('');
@@ -368,13 +397,18 @@ export default function StaffModal({ isOpen, onClose, onSave, editData, roles })
                   color: '#334155',
                   marginBottom: '6px',
                 }}>
-                  Phone / Contact
+                  Phone / Contact <span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <input
                   type="tel"
                   placeholder="9876543210"
                   value={form.phone}
-                  onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                  onChange={e => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setForm(f => ({ ...f, phone: value }));
+                  }}
+                  maxLength={10}
+                  required
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -442,7 +476,7 @@ export default function StaffModal({ isOpen, onClose, onSave, editData, roles })
                 <select
                   value={form.role}
                   onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
-                  // required
+                  required
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -473,11 +507,12 @@ export default function StaffModal({ isOpen, onClose, onSave, editData, roles })
                   color: '#334155',
                   marginBottom: '6px',
                 }}>
-                  Admin Stage
+                  Admin Stage <span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <select
                   value={form.adminStage}
                   onChange={e => setForm(f => ({ ...f, adminStage: e.target.value }))}
+                  required
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -516,11 +551,12 @@ export default function StaffModal({ isOpen, onClose, onSave, editData, roles })
                   color: '#334155',
                   marginBottom: '6px',
                 }}>
-                  Admin Code
+                  Admin Code <span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <select
                   value={form.adminCode}
                   onChange={e => setForm(f => ({ ...f, adminCode: e.target.value }))}
+                  required
                   style={{
                     width: '100%',
                     padding: '10px 14px',

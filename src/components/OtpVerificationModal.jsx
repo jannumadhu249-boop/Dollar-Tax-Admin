@@ -9,19 +9,19 @@ export default function OtpVerificationModal({
   targetField = "Email Address" 
 }) {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [timeLeft, setTimeLeft] = useState(120);
+  const [timeLeft, setTimeLeft] = useState(30);
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // 2-Minute Timer Countdown Effect
+  // 30-Second Timer Countdown Effect
   useEffect(() => {
     if (!isOpen) return;
 
     // Reset states on modal open
     setOtp(['', '', '', '', '', '']);
-    setTimeLeft(120);
+    setTimeLeft(30);
     setErrorMsg('');
     setSuccessMsg('Verification OTP code sent to your registered contact.');
 
@@ -75,7 +75,7 @@ export default function OtpVerificationModal({
     // Simulate API delay with loader
     setTimeout(() => {
       setIsResending(false);
-      setTimeLeft(120); // Reset 2 minutes timer
+      setTimeLeft(30);
       setOtp(['', '', '', '', '', '']);
       setSuccessMsg('A new OTP has been dispatched to your email.');
     }, 1200);

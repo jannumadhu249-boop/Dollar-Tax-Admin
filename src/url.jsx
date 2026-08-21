@@ -10,6 +10,7 @@ export const URLS = {
     Login : base_url + "v1/minimumTax/admin/auth/login",
     LoginVerification : base_url + "v1/minimumTax/admin/auth/verifyLoginOtp",
     ChangePassword : base_url + "v1/minimumTax/admin/auth/change-password",
+    GetProfile : base_url + "v1/minimumTax/admin/auth/getProfile",
 
     // Forgot Password
     GenerateOtp : base_url + "v1/minimumTax/admin/auth/generateForgotPasswordOtp",

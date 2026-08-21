@@ -206,13 +206,22 @@ export function getToken() {
 /* ─── Super-admin check ─────────────────────────────────── */
 export function isSuperAdmin() {
   const storedStage = (sessionStorage.getItem('adminStage') || localStorage.getItem('adminStage') || '').toLowerCase();
+  if (storedStage === 'staff' || storedStage === 'stage1' || storedStage === 'stage2' || storedStage === 'employee') {
+    return false;
+  }
   if (storedStage === 'super' || storedStage === 'superadmin') return true;
 
   const storedInfo = sessionStorage.getItem('adminInfo') || localStorage.getItem('adminInfo');
   if (storedInfo) {
     try {
       const info = JSON.parse(storedInfo);
-      if (info?.email?.toLowerCase() === 'madhumoironix@gmail.com') return true;
+      const infoStage = (info?.stage || info?.admin_stage || '').toLowerCase();
+      if (infoStage === 'staff' || infoStage === 'stage1' || infoStage === 'stage2' || infoStage === 'employee') {
+        return false;
+      }
+      if (infoStage === 'super' || infoStage === 'superadmin' || info?.email?.toLowerCase() === 'madhumoironix@gmail.com') {
+        return true;
+      }
     } catch {}
   }
 
@@ -224,7 +233,13 @@ export function isSuperAdmin() {
   const email = (payload.email || payload.admin_email || '').toLowerCase();
   if (email === 'madhumoironix@gmail.com') return true;
 
-  const stage = (payload.admin_stage || payload.adminStage || payload.stage || payload.role || '').toLowerCase();
+  const rawRole = typeof payload.role === 'string' ? payload.role : (payload.role?.roleName || payload.role?.name || '');
+  const stage = (payload.admin_stage || payload.adminStage || payload.stage || rawRole || '').toLowerCase();
+
+  if (stage === 'staff' || stage === 'stage1' || stage === 'stage2' || stage === 'employee') {
+    return false;
+  }
+
   return stage === 'super' || stage === 'superadmin' || payload.isSuperAdmin === true;
 }
 
@@ -369,7 +384,7 @@ export async function fetchAndStorePermissions(roleId, token, baseUrl) {
 
     try {
       const res = await fetch(`${cleanBase}v1/minimumTax/admin/role/getRoleById/${roleId}`, {
-        method: 'GET',
+        method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -403,10 +418,10 @@ export async function fetchAndStorePermissions(roleId, token, baseUrl) {
     if (res.ok && json.success !== false) {
       const rolesList = json.data || json.result || [];
       if (Array.isArray(rolesList) && rolesList.length > 0) {
-        const matched = rolesList.find(r => 
-          (roleId && (r._id === roleId || r.id === roleId)) ||
+        const matched = roleId ? rolesList.find(r => 
+          (r._id === roleId || r.id === roleId || String(r._id) === String(roleId)) ||
           r.name === roleId || r.roleName === roleId
-        ) || rolesList[0];
+        ) : null;
 
         if (matched && matched.permissions) {
           sessionStorage.setItem('adminPermissions', JSON.stringify(matched.permissions));
@@ -418,12 +433,14 @@ export async function fetchAndStorePermissions(roleId, token, baseUrl) {
     console.warn('getRoles fallback error:', e);
   }
 
-  return null;
+  sessionStorage.setItem('adminPermissions', JSON.stringify([]));
+  return [];
 }
 
 /* ─── Multi-strategy Staff Permission Resolver ────────────── */
 export async function resolveStaffPermissions(token, baseUrl, loginResponseData = {}, jwtPayload = {}) {
   if (!token) return null;
+  const cleanBase = (baseUrl || '').replace(/\/+$/, '') + '/';
 
   // 1. Direct permissions in login response or JWT
   const directPermissions = 
@@ -451,13 +468,43 @@ export async function resolveStaffPermissions(token, baseUrl, loginResponseData 
     jwtPayload?.roleId ||
     (typeof jwtPayload?.role === 'string' ? jwtPayload?.role : jwtPayload?.role?._id);
 
-  // 3. If roleId missing, attempt getStaffById
+  // 3. Attempt getProfile to fetch exact employee role/permissions
+  try {
+    const profileRes = await fetch(`${cleanBase}v1/minimumTax/admin/auth/getProfile`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    });
+    if (profileRes.ok) {
+      const profileJson = await profileRes.json();
+      if (profileJson.success && profileJson.data) {
+        const pData = profileJson.data;
+        if (Array.isArray(pData.permissions) && pData.permissions.length > 0) {
+          sessionStorage.setItem('adminPermissions', JSON.stringify(pData.permissions));
+          return pData.permissions;
+        }
+        if (Array.isArray(pData.role?.permissions) && pData.role.permissions.length > 0) {
+          sessionStorage.setItem('adminPermissions', JSON.stringify(pData.role.permissions));
+          return pData.role.permissions;
+        }
+        if (!roleId) {
+          roleId = pData.role_id || pData.roleId || (typeof pData.role === 'string' ? pData.role : pData.role?._id);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Could not fetch profile for permissions:', e);
+  }
+
+  // 4. If roleId missing, attempt getStaffById
   const adminId = jwtPayload?.admin_id || jwtPayload?.adminId || jwtPayload?.id || jwtPayload?._id || loginResponseData?.data?.admin_id;
   if (!roleId && adminId) {
     try {
-      const cleanBase = (baseUrl || '').replace(/\/+$/, '') + '/';
       const staffRes = await fetch(`${cleanBase}v1/minimumTax/admin/staff/getStaffById/${adminId}`, {
-        method: 'GET',
+        method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -467,7 +514,7 @@ export async function resolveStaffPermissions(token, baseUrl, loginResponseData 
       if (staffRes.ok && staffJson.data) {
         const staffMember = staffJson.data;
         roleId = staffMember.role_id || staffMember.role?._id || staffMember.role;
-        if (staffMember.role?.permissions) {
+        if (Array.isArray(staffMember.role?.permissions) && staffMember.role.permissions.length > 0) {
           sessionStorage.setItem('adminPermissions', JSON.stringify(staffMember.role.permissions));
           return staffMember.role.permissions;
         }
@@ -477,7 +524,7 @@ export async function resolveStaffPermissions(token, baseUrl, loginResponseData 
     }
   }
 
-  // 4. Fetch permissions using roleId or getRoles fallback
+  // 5. Fetch permissions using roleId or getRoles
   return await fetchAndStorePermissions(roleId, token, baseUrl);
 }
 

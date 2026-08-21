@@ -252,7 +252,7 @@ export default function Leads() {
             <option value="All">All Status</option>
             <option value="Completed">Completed</option>
             <option value="Pending">Pending</option>
-            <option value="In Progress">In Progress</option>
+            <option value="InProgress">In Progress</option>
           </select>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, justifyContent: 'flex-end' }}>

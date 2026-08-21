@@ -18,7 +18,7 @@ const getAuthToken = () => {
 ───────────────────────────────────────────────────────────── */
 function OtpModal({ isOpen, onClose, onVerify, onResend, fieldLabel }) {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [timeLeft, setTimeLeft] = useState(120);
+  const [timeLeft, setTimeLeft] = useState(30);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [success, setSuccess] = useState('');
@@ -28,7 +28,7 @@ function OtpModal({ isOpen, onClose, onVerify, onResend, fieldLabel }) {
   useEffect(() => {
     if (!isOpen) return;
     setOtp(['', '', '', '', '', '']);
-    setTimeLeft(120);
+    setTimeLeft(30);
     setError('');
     setSuccess('Verification code sent to email.');
 
@@ -63,7 +63,7 @@ function OtpModal({ isOpen, onClose, onVerify, onResend, fieldLabel }) {
     setError('');
     try {
       if (onResend) await onResend();
-      setTimeLeft(120);
+      setTimeLeft(30);
       setOtp(['', '', '', '', '', '']);
       setSuccess('New verification code sent.');
     } catch (err) {
@@ -787,28 +787,71 @@ const handleDeleteDoc = async (docId) => {
     'Information Pending': 'BIP',
     'Interview Pending': 'IP',
     'Documents Pending': 'DP',
-    'Preparation Pending - I': 'PP_I',
-    'Preparation Pending - II': 'PP_II',
-    'Review & Summary I': 'TR_S_I',
-    'Review & Summary II': 'TR_S_II',
+
+    // Preparation 1 & 2
+    'Preparation - 1': 'PP_I',
+    'Preparation - 2': 'PP_II',
+
+    // Review & Summary 1 & 2
+    'Review & Summary 1': 'TR_S_I',
+    'Review & Summary 2': 'TR_S_II',
+
     'ITIN Files': 'ITIN',
     'Revised Estimate': 'RE_ES',
     'Payment Pending - Efiling': 'PP_EF',
     'Payment Pending - Paper filing': 'PP_PF',
+
+    // Fee Payment Received I & II
     'Fee Payment Received - I': 'FPR',
-    'Fee Payment Received - II': 'FPR_2',
+    'Fee Payment Received - II': 'FPR_II',
+
     'Client Review - Efiling': 'CR_EF',
     'Client Review - Paper Filing': 'CR_PF',
-    'Efiling Pending - I': 'EFP_I',
-    'Efiling Pending - II': 'EFP_II',
-    'E - Filed & Awaiting Acceptance - I': 'EF_AA_I',
-    'E - Filed & Awaiting Acceptance - II': 'EF_AA_II',
+
+    // Efiling Pending 1 & 2
+    'Efiling Pending - 1': 'EFP_I',
+    'Efiling Pending - 2': 'EFP_II',
+
+    // E - Filed & Awaiting Acceptance 1 & 2
+    'E - Filed & Awaiting Acceptance - 1': 'EF_AA_I',
+    'E - Filed & Awaiting Acceptance - 2': 'EF_AA_II',
+
     'E - Filed & Rejected': 'EF_REJ',
     'City Return': 'C_R',
     'E-Filing Accepted & Filing Complete': 'EFA_FC',
     'Paper Filing Pending': 'PF_P',
     'Paper Filing Done': 'PF_D',
-    'Cancelled': 'CANC'
+    'Cancelled': 'CANC',
+
+    // Direct code identity mappings
+    'RGO': 'RGO',
+    'SP': 'SP',
+    'BIP': 'BIP',
+    'IP': 'IP',
+    'DP': 'DP',
+    'PP_I': 'PP_I',
+    'PP_II': 'PP_II',
+    'TR_S_I': 'TR_S_I',
+    'TR_S_II': 'TR_S_II',
+    'ITIN': 'ITIN',
+    'RE_ES': 'RE_ES',
+    'PP_EF': 'PP_EF',
+    'PP_PF': 'PP_PF',
+    'FPR': 'FPR',
+    'FPR_II': 'FPR_II',
+    'FPR_2': 'FPR_II',
+    'CR_EF': 'CR_EF',
+    'CR_PF': 'CR_PF',
+    'EFP_I': 'EFP_I',
+    'EFP_II': 'EFP_II',
+    'EF_AA_I': 'EF_AA_I',
+    'EF_AA_II': 'EF_AA_II',
+    'EF_REJ': 'EF_REJ',
+    'C_R': 'C_R',
+    'EFA_FC': 'EFA_FC',
+    'PF_P': 'PF_P',
+    'PF_D': 'PF_D',
+    'CANC': 'CANC'
   };
 
   const fetchFileInfoHistory = async () => {
@@ -1176,7 +1219,7 @@ const handleDeleteDoc = async (docId) => {
                         { label: 'MIDDLE NAME', value: profileData?.personalInfo?.middle_name || '—' },
                         { label: 'LAST NAME', value: profileData?.personalInfo?.last_name || member.raw?.last_name || member.name?.split(' ').slice(1).join(' ') || '—' },
                         { label: 'CONTACT NUMBER', value: profileData?.personalInfo?.contact_number || member.raw?.contact_number || '—', masked: true, requiresOtp: true, isPhone: true, isContact: true, key: `${member._id || member.sNo}_phone` },
-                        { label: 'ALTERNATE NUMBER', value: profileData?.personalInfo?.alternate_number || member.raw?.alter_number || '—' },
+                        { label: 'ALTERNATE NUMBER', value: profileData?.personalInfo?.alternate_number || member.raw?.alter_number || '—', masked: true, requiresOtp: true, isPhone: true, isContact: true, key: `${member._id || member.sNo}_alter_phone` },
                         { label: 'TIME ZONE', value: profileData?.personalInfo?.timezone || member.raw?.time_zone || '—' },
                         { label: 'SSN / TIN TYPE', value: profileData?.personalInfo?.ssn_tin
                           //  || member.raw?.file_type || member.filingType
@@ -1190,6 +1233,8 @@ const handleDeleteDoc = async (docId) => {
                         { label: 'CITY', value: profileData?.personalInfo?.city || '—' },
                         { label: 'STATE', value: profileData?.personalInfo?.state || '—' },
                         { label: 'ZIPCODE', value: profileData?.personalInfo?.zipcode || '—' },
+                        { label: 'FILING TYPE', value: profileData?.personalInfo?.filing_type || '—' },
+                        { label: 'DATE OF MARRIAGE', value: profileData?.personalInfo?.date_of_marriage},
                         { label: 'FILING STATUS', value: profileData?.personalInfo?.filing_status || member.raw?.filestatus || member.status || '—' },
                         { label: 'FIRST ENTRY DATE INTO USA', value: profileData?.personalInfo?.first_entry_date_into_usa ? new Date(profileData.personalInfo.first_entry_date_into_usa).toLocaleDateString() : '—' },
                         { label: 'REGISTRATION DATE', value: member.raw?.date_created ? new Date(member.raw.date_created).toLocaleString() : member.regDate || '—' },

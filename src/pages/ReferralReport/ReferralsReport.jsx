@@ -35,7 +35,7 @@ export default function ReferralsReport({ selectedYear }) {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpError, setOtpError] = useState('');
-  const [timeLeft, setTimeLeft] = useState(120);
+  const [timeLeft, setTimeLeft] = useState(30);
   const [isVerifying, setIsVerifying] = useState(false);
   const [success, setSuccess] = useState('');
 
@@ -216,7 +216,7 @@ export default function ReferralsReport({ selectedYear }) {
 
   const handleResend = () => {
     if (timeLeft > 0) return;
-    setTimeLeft(120);
+    setTimeLeft(30);
     sendOtp(verificationItemId, verificationType);
     setOtp(['', '', '', '', '', '']);
     setSuccess('New verification code sent.');
@@ -226,7 +226,7 @@ export default function ReferralsReport({ selectedYear }) {
   useEffect(() => {
     if (!showOtpModal) return;
     setOtp(['', '', '', '', '', '']);
-    setTimeLeft(120);
+    setTimeLeft(30);
     setOtpError('');
     setSuccess('Verification code sent to your email.');
     const timer = setInterval(() => {

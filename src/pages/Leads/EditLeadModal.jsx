@@ -117,7 +117,7 @@ export default function EditLeadModal({ lead, onClose, onSave }) {
               <select className="leads-input leads-select" value={form.status} onChange={handle('status')}>
                 <option value="Pending">Pending</option>
                 <option value="Completed">Completed</option>
-                <option value="In Progress">In Progress</option>
+                <option value="InProgress">In Progress</option>
               </select>
             </div>
           </div>
