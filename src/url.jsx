@@ -4,6 +4,7 @@ export const URLS = {
 
     Base : base_url ,
     ImageUrl : base_url,
+    DashboardImageUrl : base_url + "uploads/dashboard/",
 
 
     // Authentication
@@ -21,6 +22,7 @@ export const URLS = {
     // Years
     GetYears : base_url + "v1/minimumTax/admin/years/getYears",
     GetCurrentYear : base_url + "v1/minimumTax/admin/years/getCurrentYear",
+    GetLatestFiveYears : base_url + "v1/minimumTax/admin/years/getRecentFiveYears",
 
     // All Registred
     GetAllRegistred : base_url + "v1/minimumTax/admin/registeredMembers/getRegisteredMembers",
@@ -113,5 +115,12 @@ export const URLS = {
     GetByIdNotes : base_url + "v1/minimumTax/admin/notes/getNoteById/",
     UpdateNotes : base_url + "v1/minimumTax/admin/notes/updateNote/",
     DeleteNotes : base_url + "v1/minimumTax/admin/notes/deleteNote/",
+
+    // Just Uploaded Docs
+    GetJustUploadDocs : base_url + "v1/minimumTax/admin/justUploadedDocs/getAllUploadedDocuments",
+    ViewJustUploadDocs : base_url + "v1/minimumTax/admin/justUploadedDocs/getUploadedDocumentsByMember/",
+
+    //Query Messages
+    GetQueryMessages : base_url + "v1/minimumTax/admin/dashboard/getDashboardMessages",
 
 }

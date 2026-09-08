@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { URLS } from '../url';
+import { URLS } from '../../url';
 
 // Helper to get auth token – adjust based on your app's storage
 const getAuthToken = () => {
@@ -207,7 +207,7 @@ export default function QueryList() {
               <th style={{ width: '60px' }}>S.No</th>
               <th style={{ width: '150px' }}>Name</th>
               <th style={{ width: '120px' }}>Mobile</th>
-              <th>Comments</th>
+              <th style={{ width: '150px' }}>Comments</th>
               <th style={{ width: '150px' }}>Date Created</th>
               <th style={{ width: '280px' }}>Reply</th>
             </tr>
@@ -245,7 +245,7 @@ export default function QueryList() {
                     <td>{idx + 1 + (currentPage - 1) * limit}</td>
                     <td style={{ fontWeight: '500' }}>{displayName}</td>
                     <td>{displayMobile}</td>
-                    <td style={{ whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{comments}</td>
+                    <td style={{ width: '150px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{comments}</td>
                     <td style={{ color: 'var(--text-muted)' }}>{createdAt}</td>
                     <td>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>

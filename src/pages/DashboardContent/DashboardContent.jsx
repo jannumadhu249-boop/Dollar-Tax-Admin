@@ -186,12 +186,51 @@ export default function DashboardContent() {
     return found ? found.label : code || '—';
   };
 
+/* ─── Image Thumbnail with Fallback ─────────────────── */
+function ImageThumb({ src, alt }) {
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [src]);
+
+  if (!src || hasError) {
+    return (
+      <div className="dc-thumb-placeholder" title="No banner image">
+        <ImageOff size={15} />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt || 'Dashboard Banner'}
+      className="dc-thumb"
+      onError={() => {
+        setHasError(true);
+      }}
+    />
+  );
+}
+
   const getImageSrc = (item) => {
-    const imageName = item.banner_image || item.image || item.imageUrl || item.image_url || '';
-    if (!imageName) return '';
-    if (imageName.startsWith('http')) return imageName;
-    const base = URLS.ImageUrl ? URLS.ImageUrl.replace(/\/$/, '') + '/' : '';
-    return base + imageName;
+    if (!item) return '';
+    let imageName = item.banner_image || item.image || item.imageUrl || item.image_url || item.bannerImage || item.file_path || item.filePath || '';
+    if (typeof imageName === 'object' && imageName !== null) {
+      imageName = imageName.url || imageName.path || imageName.filename || imageName.file_path || '';
+    }
+    if (!imageName || typeof imageName !== 'string' || !imageName.trim()) return '';
+    if (imageName.startsWith('http://') || imageName.startsWith('https://') || imageName.startsWith('blob:') || imageName.startsWith('data:')) {
+      return imageName;
+    }
+    const clean = imageName.replace(/\\/g, '/').replace(/^\/+/, '');
+    if (clean.startsWith('uploads/')) {
+      const base = (URLS.ImageUrl || URLS.Base || '').replace(/\/+$/, '') + '/';
+      return base + clean;
+    }
+    const dashboardBase = (URLS.DashboardImageUrl || `${(URLS.ImageUrl || URLS.Base || '').replace(/\/+$/, '')}/uploads/dashboard/`).replace(/\/+$/, '') + '/';
+    return dashboardBase + clean;
   };
 
   const toggleExpand = (id) => {
@@ -458,21 +497,7 @@ export default function DashboardContent() {
                       <tr key={item._id || idx}>
                         <td>{(pagination.currentPage - 1) * pagination.limit + idx + 1}</td>
                         <td>
-                          {imageSrc ? (
-                            <img
-                              src={imageSrc}
-                              alt={description || 'Dashboard image'}
-                              className="dc-thumb"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                                console.warn('❌ Image failed to load:', imageSrc);
-                              }}
-                            />
-                          ) : (
-                            <div className="dc-thumb-placeholder">
-                              <ImageOff size={14} />
-                            </div>
-                          )}
+                          <ImageThumb src={imageSrc} alt={description} />
                         </td>
                         <td>
                           <div
@@ -550,7 +575,7 @@ export default function DashboardContent() {
         isOpen={!!deleteItem}
         onClose={() => setDeleteItem(null)}
         onConfirm={handleDelete}
-        description={deleteItem?.description || deleteItem?.desc || ''}
+        description={deleteItem?.page_title || deleteItem?.description || deleteItem?.desc || ''}
       />
       {toast && (
         <Toast

@@ -51,17 +51,35 @@ export default function DashboardContentModal({ isOpen, onClose, onSave, editDat
   const [imagePreview, setImagePreview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const buildImageUrl = (imageName) => {
+    if (!imageName) return '';
+    if (typeof imageName === 'object' && imageName !== null) {
+      imageName = imageName.url || imageName.path || imageName.filename || imageName.file_path || '';
+    }
+    if (typeof imageName !== 'string' || !imageName.trim()) return '';
+    if (imageName.startsWith('http://') || imageName.startsWith('https://') || imageName.startsWith('blob:') || imageName.startsWith('data:')) {
+      return imageName;
+    }
+    const clean = imageName.replace(/\\/g, '/').replace(/^\/+/, '');
+    if (clean.startsWith('uploads/')) {
+      const base = (URLS.ImageUrl || URLS.Base || '').replace(/\/+$/, '') + '/';
+      return base + clean;
+    }
+    const dashboardBase = (URLS.DashboardImageUrl || `${(URLS.ImageUrl || URLS.Base || '').replace(/\/+$/, '')}/uploads/dashboard/`).replace(/\/+$/, '') + '/';
+    return dashboardBase + clean;
+  };
+
   useEffect(() => {
     if (isOpen) {
       if (editData) {
-        setFileStatus(editData.file_status || editData.status || editData.statusCode || '');
-        setPageTitle(editData.page_title || editData.desc || editData.content || '');
+        setFileStatus(editData.file_status || editData.status || editData.statusCode || 'SP');
+        setPageTitle(editData.page_title || editData.desc || editData.content || editData.description || '');
         setImage(null);
-        const imgName = editData.banner_image || editData.image || editData.imageUrl || editData.image_url || '';
+        const imgName = editData.banner_image || editData.image || editData.imageUrl || editData.image_url || editData.bannerImage || editData.file_path || editData.filePath || '';
         const preview = buildImageUrl(imgName);
         setImagePreview(preview);
       } else {
-        setFileStatus('SP');
+        setFileStatus('RGO');
         setPageTitle('');
         setImage(null);
         setImagePreview(null);
@@ -78,14 +96,6 @@ export default function DashboardContentModal({ isOpen, onClose, onSave, editDat
     setImagePreview(URL.createObjectURL(file));
   };
 
-  const buildImageUrl = (imageName) => {
-  if (!imageName) return '';
-  if (imageName.startsWith('http')) return imageName;
-  const base = (URLS.ImageUrl || '').replace(/\/+$/, '') + '/';
-  const clean = imageName.replace(/^\/+/, '');
-  return base + clean;
-};
-
   const removeImage = () => {
     setImage(null);
     setImagePreview(null);
@@ -95,7 +105,7 @@ export default function DashboardContentModal({ isOpen, onClose, onSave, editDat
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!pageTitle.trim()) {
-      alert('Page Title is required.');
+      alert('Description is required.');
       return;
     }
     setSubmitting(true);
@@ -107,8 +117,8 @@ export default function DashboardContentModal({ isOpen, onClose, onSave, editDat
         formData.append('image', image);
       }
 
-      const baseUrl = isEdit ? URLS.UpdateDashboardContent.replace(/\/$/, '') : URLS.CreateDashboardContent;
-      const url = isEdit ? `${baseUrl}/${editData._id}` : baseUrl;
+      const baseUrl = isEdit ? URLS.UpdateDashboardContent.replace(/\/+$/, '') : URLS.CreateDashboardContent;
+      const url = isEdit ? `${baseUrl}/${editData._id || editData.id}` : baseUrl;
       const method = isEdit ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -124,7 +134,7 @@ export default function DashboardContentModal({ isOpen, onClose, onSave, editDat
         throw new Error(json.message || 'Request failed');
       }
     } catch (err) {
-      console.error(err);
+      console.error('Save error:', err);
       onSave(null, err.message || 'Something went wrong');
     } finally {
       setSubmitting(false);

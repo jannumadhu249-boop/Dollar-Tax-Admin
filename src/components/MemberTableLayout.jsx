@@ -499,6 +499,8 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadDocName, setUploadDocName] = useState('');
   const [uploadDocTypeId, setUploadDocTypeId] = useState('');
+  const [uploadYearId, setUploadYearId] = useState('');
+  const [recentFiveYears, setRecentFiveYears] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [uploadSuccess, setUploadSuccess] = useState('');
@@ -619,6 +621,27 @@ useEffect(() => {
   }
 }, [member]);
 
+  // ---- Fetch recent 5 years ----
+  const fetchRecentFiveYears = async () => {
+    try {
+      const token = getAuthToken();
+      const res = await fetch(URLS.GetLatestFiveYears, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setRecentFiveYears(data.data);
+      }
+    } catch (err) {
+      console.warn('Error loading recent 5 years:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecentFiveYears();
+  }, []);
+
   // ---- Fetch admin‑uploaded documents ----
   const fetchAdminUploadedDocs = async (memberId) => {
     if (!memberId) return;
@@ -675,6 +698,9 @@ useEffect(() => {
       const docTypeIdToSend = DOC_TYPE_MAP[uploadDocTypeId] || uploadDocTypeId;
       formData.append('document_type', docTypeIdToSend);
       formData.append('document_name', uploadDocName.trim() || uploadFile.name);
+      if (uploadYearId) {
+        formData.append('year_id', uploadYearId);
+      }
 
       const endpoint = `${URLS.UploadDocuments}${userId}`;
 
@@ -695,6 +721,7 @@ useEffect(() => {
         setUploadFile(null);
         setUploadDocName('');
         setUploadDocTypeId('');
+        setUploadYearId('');
         if (fileInputRef.current) fileInputRef.current.value = '';
         setTimeout(() => setUploadSuccess(''), 4000);
       } else {
@@ -1221,9 +1248,7 @@ const handleDeleteDoc = async (docId) => {
                         { label: 'CONTACT NUMBER', value: profileData?.personalInfo?.contact_number || member.raw?.contact_number || '—', masked: true, requiresOtp: true, isPhone: true, isContact: true, key: `${member._id || member.sNo}_phone` },
                         { label: 'ALTERNATE NUMBER', value: profileData?.personalInfo?.alternate_number || member.raw?.alter_number || '—', masked: true, requiresOtp: true, isPhone: true, isContact: true, key: `${member._id || member.sNo}_alter_phone` },
                         { label: 'TIME ZONE', value: profileData?.personalInfo?.timezone || member.raw?.time_zone || '—' },
-                        { label: 'SSN / TIN TYPE', value: profileData?.personalInfo?.ssn_tin
-                          //  || member.raw?.file_type || member.filingType
-                            || '—' },
+                        { label: 'SSN / TIN TYPE', value: profileData?.personalInfo?.ssn_tin || '—' },
                         { label: 'DATE OF BIRTH', value: profileData?.personalInfo?.date_of_birth ? new Date(profileData.personalInfo.date_of_birth).toLocaleDateString() : '—' },
                         { label: 'OCCUPATION', value: profileData?.personalInfo?.occupation || '—' },
                         { label: 'GENDER', value: profileData?.personalInfo?.gender || '—' },
@@ -1918,7 +1943,7 @@ const handleDeleteDoc = async (docId) => {
               )}
 
               <form onSubmit={handleUploadDocument} style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '650px', margin: '0 auto' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
                   {/* Document Name */}
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '5px' }}>
@@ -1955,6 +1980,28 @@ const handleDeleteDoc = async (docId) => {
                       <option value="Revised Tax Summary">Revised Tax Summary</option>
                       <option value="Tax Review Copy">Tax Review Copy</option>
                       <option value="Filed Return For Records">Filed Return For Records</option>
+                    </select>
+                  </div>
+
+                  {/* Tax Year */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '5px' }}>
+                      Tax Year
+                    </label>
+                    <select
+                      value={uploadYearId}
+                      onChange={e => setUploadYearId(e.target.value)}
+                      style={{
+                        width: '100%', padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '6px',
+                        fontSize: '13px', color: '#0f172a', outline: 'none', boxSizing: 'border-box', background: '#fff'
+                      }}
+                    >
+                      <option value="">Select Tax Year</option>
+                      {(recentFiveYears.length > 0 ? recentFiveYears : []).map(y => (
+                        <option key={y._id || y.name} value={y._id || y.name}>
+                          Tax Year {y.name || y.year_name || y}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>

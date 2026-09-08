@@ -10,7 +10,7 @@ import {
   Monitor,
   Paperclip,
   AlertTriangle,
-  Search, PhoneCall, FileUp, Send, Mail, NotebookPen, Settings, Home
+  Search, PhoneCall, FileUp, Send, Mail, NotebookPen, Settings, Home, MessageCircle
 } from 'lucide-react';
 import { URLS } from '../url';
 import { INITIAL_MEMBERS } from '../data/mockMembers';
@@ -739,6 +739,19 @@ export default function Sidebar({ selectedYear = '', currentFilter = 'all-regist
             <div className="menu-btn-left">
               <Search size={16} className="menu-icon" />
               <span className="uppercase-label">QUERY LIST</span>
+            </div>
+          </button>
+        )}
+
+        {/* MESSAGES */}
+        {canView('messages') && (
+          <button
+            className={`sidebar-menu-btn ${currentFilter === 'messages' ? 'active' : ''}`}
+            onClick={() => handleItemClick('messages')}
+          >
+            <div className="menu-btn-left">
+              <MessageCircle size={16} className="menu-icon" />
+              <span className="uppercase-label">MESSAGES</span>
             </div>
           </button>
         )}

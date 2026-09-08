@@ -13,7 +13,8 @@ import Estimator from './pages/Estimator';
 import ClientTracker from './pages/ClientTracker';
 import DocumentHub from './pages/DocumentHub';
 import CallbackRequests from './pages/CallbackRequests';
-import QueryList from './pages/QueryList';
+import QueryList from './pages/QueryAndMessages/QueryList';
+import Messages from './pages/QueryAndMessages/Messages';
 import Leads from './pages/Leads/index';
 import SendMail from './pages/SendMail';
 import MNote from './pages/MNote';
@@ -23,7 +24,7 @@ import PaymentsReport from './pages/PaymentsReport';
 import ClientSearch from './pages/ClientSearch';
 import ClientStage from './pages/ClientStage';
 import RefereeReport from './pages/RefereeReport';
-import UplodedDocs from './pages/JustUploadedDocs';
+import UplodedDocs from './pages/JustUploadedDocs/JustUploadedDocs';
 
 // ──────────────────────────────────────────────────────────
 //  Administration Pages
@@ -112,6 +113,7 @@ const ROUTE_MAP = {
   'paper-filing-accepted-complete': '/paper-filing/done',
   'cancelled': '/cancelled',
   'query-list': '/query-list',
+  'messages': '/messages',
   'call-back-requests': '/call-back-requests',
   'just-uploaded-docs': '/just-uploaded-docs',
   'send-mail': '/send-mail',
@@ -306,6 +308,8 @@ export default function App() {
           return <CallbackRequests />;
         case 'query-list':
           return <QueryList />;
+        case 'messages':
+          return <Messages />;
         case 'send-mail':
           return <SendMail selectedYear={selectedYear} />;
         case 'mailgun':
