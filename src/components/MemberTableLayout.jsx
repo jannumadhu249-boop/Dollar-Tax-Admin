@@ -481,6 +481,7 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
   const [bankModalOpen, setBankModalOpen] = useState(false);
   const [pendingEmailKey, setPendingEmailKey] = useState(null);
   const [commentText, setCommentText] = useState('');
+  const [commentPopup, setCommentPopup] = useState(null); // { text: string } | null
   const [commentStatus, setCommentStatus] = useState(member.status);
   const [fileTypeInput, setFileTypeInput] = useState('E-Filing');
   const [statusInput, setStatusInput] = useState(member.status || 'EFA_FC');
@@ -1259,7 +1260,9 @@ const handleDeleteDoc = async (docId) => {
                         { label: 'STATE', value: profileData?.personalInfo?.state || '—' },
                         { label: 'ZIPCODE', value: profileData?.personalInfo?.zipcode || '—' },
                         { label: 'FILING TYPE', value: profileData?.personalInfo?.filing_type || '—' },
-                        { label: 'DATE OF MARRIAGE', value: profileData?.personalInfo?.date_of_marriage},
+                        { label: 'DATE OF MARRIAGE', value: profileData?.personalInfo?.date_of_marriage },
+                        { label: 'REFERED EMAIL', value: profileData?.personalInfo?.refer_email },
+                        { label: 'REFERED NAME', value: profileData?.personalInfo?.refer_full_name },
                         { label: 'FILING STATUS', value: profileData?.personalInfo?.filing_status || member.raw?.filestatus || member.status || '—' },
                         { label: 'FIRST ENTRY DATE INTO USA', value: profileData?.personalInfo?.first_entry_date_into_usa ? new Date(profileData.personalInfo.first_entry_date_into_usa).toLocaleDateString() : '—' },
                         { label: 'REGISTRATION DATE', value: member.raw?.date_created ? new Date(member.raw.date_created).toLocaleString() : member.regDate || '—' },
@@ -1661,7 +1664,7 @@ const handleDeleteDoc = async (docId) => {
                       </thead>
                       <tbody>
                         {memberDocs.map((doc, i) => {
-                          const docName = doc.original_name || doc.document_name || doc.file_name || 'Document';
+                          const docName = doc.document_name || doc.file_name || doc.name || doc.originalName || '—';
                           const categoryName = doc.document_type?.name || 'Tax Document';
                           const sizeStr = doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : '—';
                           const uploadDate = doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : '—';
@@ -2335,44 +2338,100 @@ const handleDeleteDoc = async (docId) => {
                 </div>
 
                 <div className="table-responsive">
-                  <table className="corporate-table">
+                  <table className="corporate-table" style={{ width: '100%' }}>
                     <thead>
                       <tr>
-                        <th>S.No</th>
-                        <th>Filing Type</th>
-                        <th>Status</th>
-                        <th>Comments</th>
-                        <th>Created By</th>
-                        <th>Date & Time</th>
+                        <th style={{ width: '70px', textAlign: 'center' }}>S.No</th>
+                        <th style={{ width: '150px', whiteSpace: 'nowrap' }}>Filing Type</th>
+                        <th style={{ width: '190px', whiteSpace: 'nowrap' }}>Status</th>
+                        <th style={{ minWidth: '250px', maxWidth: 'nowrap' }}>Comments</th>
+                        <th style={{ width: '150px', whiteSpace: 'nowrap' }}>Created By</th>
+                        <th style={{ width: '180px', whiteSpace: 'nowrap' }}>Date & Time</th>
                       </tr>
                     </thead>
                     <tbody>
                       {statusHistory.length > 0 ? (
-                        statusHistory.map((c, i) => (
-                          <tr key={c._id || i}>
-                            <td>{i + 1}</td>
-                            <td style={{ fontWeight: '500' }}>{c.file_type || member.filingType || '—'}</td>
-                            <td>
-                              <span style={{
-                                background: c.status?.includes('EFA') || c.status_name?.includes('Complete') ? '#ecfdf5' : '#f0f9ff',
-                                color: c.status?.includes('EFA') || c.status_name?.includes('Complete') ? '#047857' : '#0369a1',
-                                border: '1px solid #bae6fd',
-                                padding: '3px 8px',
-                                borderRadius: '12px',
-                                fontSize: '11px',
-                                fontWeight: '600',
-                                display: 'inline-block'
-                              }}>
-                                {c.status_name || c.status || '—'}
-                              </span>
-                            </td>
-                            <td style={{ color: '#334155' }}>{c.comments || '—'}</td>
-                            <td style={{ fontSize: '12px', color: '#64748b' }}>{c.createdBy || 'Admin'}</td>
-                            <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
-                              {c.createdAt ? new Date(c.createdAt).toLocaleString() : (c.dateTime || '—')}
-                            </td>
-                          </tr>
-                        ))
+                        statusHistory.map((c, i) => {
+                          const fullComment = (c.comments || '').trim();
+                          const MAX_LEN = 100;
+                          const isLong = fullComment.length > MAX_LEN;
+                          const preview = isLong ? `${fullComment.slice(0, MAX_LEN)}...` : (fullComment || '—');
+                          return (
+                            <tr key={c._id || i}>
+                              <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>{i + 1}</td>
+                              <td style={{ fontWeight: '500', whiteSpace: 'nowrap' }}>{c.file_type || member.filingType || '—'}</td>
+                              <td style={{ whiteSpace: 'nowrap' }}>
+                                <span style={{
+                                  background: c.status?.includes('EFA') || c.status_name?.includes('Complete') ? '#ecfdf5' : '#f0f9ff',
+                                  color: c.status?.includes('EFA') || c.status_name?.includes('Complete') ? '#047857' : '#0369a1',
+                                  border: '1px solid #bae6fd',
+                                  padding: '3px 8px',
+                                  borderRadius: '12px',
+                                  fontSize: '11px',
+                                  fontWeight: '600',
+                                  display: 'inline-block'
+                                }}>
+                                  {c.status_name || c.status || '—'}
+                                </span>
+                              </td>
+                              <td style={{ color: '#334155', maxWidth: '240px', overflow: 'hidden', verticalAlign: 'middle' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', width: '100%' }}>
+                                  <span
+                                    style={{
+                                      fontSize: '13px',
+                                      lineHeight: '1.4',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                      maxWidth: isLong ? '140px' : '220px',
+                                      display: 'inline-block',
+                                      verticalAlign: 'middle',
+                                      cursor: isLong ? 'pointer' : 'default'
+                                    }}
+                                    title={isLong ? "Click to view full comment" : (fullComment || '')}
+                                    onClick={() => isLong && setCommentPopup({ text: fullComment })}
+                                  >
+                                    {preview}
+                                  </span>
+                                  {isLong && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setCommentPopup({ text: fullComment })}
+                                      style={{
+                                        border: '1px solid #bae6fd',
+                                        background: '#f0f9ff',
+                                        color: '#0284c7',
+                                        borderRadius: '4px',
+                                        padding: '2px 8px',
+                                        fontSize: '11px',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap',
+                                        flexShrink: 0,
+                                        lineHeight: '1.2'
+                                      }}
+                                      onMouseEnter={e => {
+                                        e.currentTarget.style.background = '#0284c7';
+                                        e.currentTarget.style.color = '#ffffff';
+                                      }}
+                                      onMouseLeave={e => {
+                                        e.currentTarget.style.background = '#f0f9ff';
+                                        e.currentTarget.style.color = '#0284c7';
+                                      }}
+                                      title="View full comment"
+                                    >
+                                      View
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                              <td style={{ fontSize: '12px', color: '#64748b', whiteSpace: 'nowrap' }}>{c.createdBy || 'Admin'}</td>
+                              <td style={{ color: 'var(--text-muted)', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                                {c.createdAt ? new Date(c.createdAt).toLocaleString() : (c.dateTime || '—')}
+                              </td>
+                            </tr>
+                          );
+                        })
                       ) : (
                         <tr>
                           <td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: '#94a3b8' }}>
@@ -2393,6 +2452,84 @@ const handleDeleteDoc = async (docId) => {
 
         </div>
       {/* </div> */}
+
+      {/* ── Comment Full-View Popup ── */}
+      {commentPopup && (
+        <div
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(15,23,42,0.55)',
+            backdropFilter: 'blur(3px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 9999, padding: '16px'
+          }}
+          onClick={() => setCommentPopup(null)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#fff',
+              borderRadius: '12px',
+              width: '100%',
+              maxWidth: '520px',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.18)',
+              overflow: 'hidden',
+              animation: 'fadeIn 0.18s ease-out'
+            }}
+          >
+            {/* Header */}
+            <div style={{
+              background: 'linear-gradient(135deg, #0076a3, #005f8a)',
+              padding: '14px 18px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: '6px', padding: '5px', display: 'flex' }}>
+                  <FileText size={16} color="#fff" />
+                </div>
+                <span style={{ color: '#fff', fontWeight: '700', fontSize: '14px' }}>Full Comment</span>
+              </div>
+              <button
+                onClick={() => setCommentPopup(null)}
+                style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', opacity: 0.85, padding: '2px' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            {/* Body */}
+            <div style={{ padding: '20px' }}>
+              <div style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '14px 16px',
+                fontSize: '13px',
+                color: '#1e293b',
+                lineHeight: '1.65',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                maxHeight: '340px',
+                overflowY: 'auto'
+              }}>
+                {commentPopup.text}
+              </div>
+            </div>
+            {/* Footer */}
+            <div style={{ padding: '10px 20px 16px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setCommentPopup(null)}
+                style={{
+                  padding: '8px 20px', border: '1px solid #cbd5e1',
+                  borderRadius: '6px', background: '#fff', color: '#475569',
+                  fontSize: '13px', fontWeight: '500', cursor: 'pointer'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <OtpModal
         isOpen={otpOpen}

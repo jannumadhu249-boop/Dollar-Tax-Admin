@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Eye, Edit2, Plus, Filter, ChevronLeft, ChevronRight, AlertTriangle, CheckCircle2, Users } from 'lucide-react';
+import { Eye, Edit2, Plus, Filter, ChevronLeft, ChevronRight, AlertTriangle, CheckCircle2, Users, Calendar } from 'lucide-react';
 import { URLS } from '../../url';
 import CreateLeadModal from './CreateLeadModal';
 import EditLeadModal from './EditLeadModal';
 import FilterModal from './FilterModal';
 import LeadDetailView from './LeadDetailView';
+import TodayLeadsModal from './TodayLeadsModal';
 
 /* ─── Token helper ─── */
 const getAuthToken = () => {
@@ -33,6 +34,24 @@ const statusColor = (s) => {
   if (lower === 'pending')   return { bg: 'rgba(255,140,0,0.12)',  color: '#e07b00' };
   if (lower === 'in progress') return { bg: 'rgba(0,118,163,0.12)', color: '#0076a3' };
   return { bg: '#f0f0f0', color: '#555' };
+};
+
+const getIsoDateString = (date) => {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const isDateToday = (dateStr) => {
+  if (!dateStr) return false;
+  const todayStr = getIsoDateString(new Date());
+  if (typeof dateStr === 'string' && dateStr.startsWith(todayStr)) return true;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return false;
+  return getIsoDateString(d) === todayStr;
 };
 
 /* ─── Toast ─── */
@@ -81,6 +100,9 @@ export default function Leads() {
   const [showFilter, setShowFilter] = useState(false);
   const [toast, setToast]           = useState(null);
 
+  const [todayLeads, setTodayLeads] = useState([]);
+  const [showTodayModal, setShowTodayModal] = useState(false);
+
   /* ── Pagination / Filtering state ── */
   const [searchTerm, setSearchTerm]   = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -103,17 +125,13 @@ export default function Leads() {
       };
 
       const res = await fetch(URLS.GetLeads, {
-        method: 'GET',
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${getAuthToken()}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify(body),
       });
-
-      // If GET doesn't work, fallback to POST (since the cURL uses GET)
-      if (res.status === 405) {
-        throw new Error('METHOD_NOT_ALLOWED');
-      }
 
       const json = await res.json();
       if (res.ok && json.success !== false) {
@@ -124,39 +142,44 @@ export default function Leads() {
         setLeads([]);
       }
     } catch (err) {
-      // Fallback: try with POST + body
-      try {
-        const body = {
-          page,
-          limit: perPage,
-          search: searchTerm,
-          status: statusFilter === 'All' ? '' : statusFilter,
-          from_date: dateFilter.from || '',
-          to_date: dateFilter.to || '',
-        };
-        const res2 = await fetch(URLS.GetLeads, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${getAuthToken()}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-        });
-        const json2 = await res2.json();
-        if (res2.ok && json2.success !== false) {
-          setLeads(json2.data || []);
-          setTotalRecords(json2.pagination?.totalRecords || (json2.data || []).length);
-        } else {
-          setLeads([]);
-        }
-      } catch (e2) {
-        console.error('Fetch leads error:', e2);
-        setLeads([]);
-      }
+      console.error('Fetch leads error:', err);
+      setLeads([]);
     } finally {
       setLoading(false);
     }
   }, [currentPage, perPage, searchTerm, statusFilter, dateFilter]);
+
+  /* ── Check Today's Leads on Initial Page Load ── */
+  const checkTodayLeads = useCallback(async () => {
+    try {
+      const res = await fetch(URLS.GetLeads, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ page: 1, limit: 100 }),
+      });
+      const json = await res.json();
+      if (res.ok && Array.isArray(json.data)) {
+        const matched = json.data.filter(l =>
+          isDateToday(l.followup_date || l.followUpDate) ||
+          isDateToday(l.createdAt || l.date)
+        );
+        setTodayLeads(matched);
+        // Automatically open popup if leads exist on today's date
+        if (matched.length > 0) {
+          setShowTodayModal(true);
+        }
+      }
+    } catch (err) {
+      console.error('Check today leads error:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkTodayLeads();
+  }, [checkTodayLeads]);
 
   useEffect(() => {
     fetchLeads(currentPage);
@@ -178,6 +201,7 @@ export default function Leads() {
       showToast('Lead added successfully!');
       fetchLeads(1);
       setCurrentPage(1);
+      checkTodayLeads();
     } else {
       showToast('Failed to add lead.', 'error');
     }
@@ -189,6 +213,7 @@ export default function Leads() {
     if (updated) {
       showToast('Lead updated successfully!');
       fetchLeads(currentPage);
+      checkTodayLeads();
     } else {
       showToast('Failed to update lead.', 'error');
     }
@@ -199,6 +224,13 @@ export default function Leads() {
     setDateFilter(f);
     setCurrentPage(1);
     setShowFilter(false);
+  };
+
+  /* ── Filter main table directly to today ── */
+  const handleFilterToday = () => {
+    const todayStr = getIsoDateString(new Date());
+    setDateFilter({ from: todayStr, to: todayStr });
+    setCurrentPage(1);
   };
 
   /* ── Pagination ── */
@@ -235,10 +267,32 @@ export default function Leads() {
           <button className="leads-btn-new" onClick={() => setShowCreate(true)}>
             <Plus size={15} /> New Lead
           </button>
+          <button
+            className={`leads-btn-today ${todayLeads.length > 0 ? 'has-leads' : ''}`}
+            onClick={() => setShowTodayModal(true)}
+            title="View today's leads"
+          >
+            <Calendar size={15} />
+            <span>Today's Leads</span>
+            {todayLeads.length > 0 && (
+              <span className="leads-today-badge">{todayLeads.length}</span>
+            )}
+          </button>
         </div>
-        <button className="leads-btn-filter" onClick={() => setShowFilter(true)}>
-          <Filter size={15} style={{ marginRight: 4 }} /> Filter
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {(dateFilter.from || dateFilter.to) && (
+            <button
+              className="leads-btn-clear-filter"
+              onClick={() => { setDateFilter({ from: '', to: '' }); setCurrentPage(1); }}
+              title="Clear date filter"
+            >
+              Clear Filter
+            </button>
+          )}
+          <button className="leads-btn-filter" onClick={() => setShowFilter(true)}>
+            <Filter size={15} style={{ marginRight: 4 }} /> Filter
+          </button>
+        </div>
       </div>
 
       {/* Second controls row */}
@@ -404,6 +458,15 @@ export default function Leads() {
       )}
 
       {/* Modals */}
+      {showTodayModal && todayLeads.length > 0 && (
+        <TodayLeadsModal
+          leads={todayLeads}
+          onClose={() => setShowTodayModal(false)}
+          onViewLead={(lead) => setViewLead(lead)}
+          onEditLead={(lead) => setEditLead(lead)}
+          onFilterToday={handleFilterToday}
+        />
+      )}
       {showCreate && (
         <CreateLeadModal onClose={() => setShowCreate(false)} onSave={handleCreate} />
       )}

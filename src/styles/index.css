@@ -1149,6 +1149,73 @@ body {
   background-color: var(--color-darkgreen-btn);
 }
 
+/* Today's Leads button */
+.leads-btn-today {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #f8fafc;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.leads-btn-today:hover {
+  background-color: #f1f5f9;
+  color: #1e293b;
+}
+
+.leads-btn-today.has-leads {
+  background-color: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.leads-btn-today.has-leads:hover {
+  background-color: #dbeafe;
+}
+
+.leads-today-badge {
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 12px;
+  margin-left: 2px;
+  animation: pulseBadge 2s infinite;
+}
+
+@keyframes pulseBadge {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* Clear Filter button */
+.leads-btn-clear-filter {
+  background-color: #f8fafc;
+  color: #64748b;
+  border: 1px dashed #cbd5e1;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.leads-btn-clear-filter:hover {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
 /* Status dropdown + per-page + search */
 .leads-status-filter,
 .leads-per-page {
