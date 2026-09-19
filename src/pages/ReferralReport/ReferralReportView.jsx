@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Eye, Shield, X, CheckCircle, Clock, RefreshCw, Loader2 } from 'lucide-react';
+import { Eye, Shield, X, CheckCircle, Clock, RefreshCw, Loader2, RotateCcw, Calendar } from 'lucide-react';
 
 const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
@@ -8,6 +8,7 @@ export default function ReferralsReportView({
   dateFrom, setDateFrom,
   dateTo, setDateTo,
   handleSubmit,
+  handleResetFilters,
   filteredReferrals,
   numericYear,
   loading,
@@ -44,15 +45,22 @@ export default function ReferralsReportView({
 
   return (
     <div className="content-card">
-      <div className="header-section" style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '12px', marginBottom: '20px' }}>
-        <h2 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>Referred Friends Report</h2>
+      <div className="header-section" style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '12px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+        <div>
+          <h2 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            Referred Friends Report {numericYear ? <span style={{ fontSize: '13px', background: '#e0f2fe', color: '#0369a1', padding: '3px 10px', borderRadius: '12px', fontWeight: '600' }}>TY{numericYear}</span> : null}
+          </h2>
+          <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>
+            Showing referral data for Tax Year {numericYear || '2026'} (Sorted by latest referral)
+          </p>
+        </div>
       </div>
 
       {/* Filter Form */}
       <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '24px', backgroundColor: '#f8f9fa', padding: '16px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '200px' }}>
-          <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)' }}>Email</label>
-          <input type="text" placeholder="Search by Email" className="search-input-box" style={{ width: '100%' }} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+          <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)' }}>Search Name / Email</label>
+          <input type="text" placeholder="Search by Name or Email" className="search-input-box" style={{ width: '100%' }} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '150px' }}>
           <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)' }}>Date From</label>
@@ -62,7 +70,21 @@ export default function ReferralsReportView({
           <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)' }}>Date To</label>
           <input type="date" className="date-picker-box" style={{ width: '100%' }} value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
         </div>
-        <button type="submit" className="btn btn-primary" style={{ padding: '8px 24px', height: '38px' }}>Submit</button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button type="submit" className="btn btn-primary" style={{ padding: '8px 24px', height: '38px' }}>Submit</button>
+          {handleResetFilters && (
+            <button
+              type="button"
+              className="btn"
+              style={{ padding: '8px 18px', height: '38px', backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              onClick={handleResetFilters}
+              title="Reset search and return to default year date range"
+            >
+              <RotateCcw size={14} />
+              Reset
+            </button>
+          )}
+        </div>
       </form>
 
       {/* ========== MAIN TABLE ========== */}
@@ -81,7 +103,8 @@ export default function ReferralsReportView({
                 <th style={{ width: '60px' }}>S.No</th>
                 <th>Name/Email</th>
                 <th style={{ width: '150px' }}>Referrals Count</th>
-                <th style={{ width: '180px' }}>Dollars earned</th>
+                <th style={{ width: '160px' }}>Dollars earned</th>
+                {/* <th style={{ width: '160px' }}>Latest Referral</th> */}
                 <th style={{ width: '100px', textAlign: 'center' }}>View List</th>
               </tr>
             </thead>
@@ -111,8 +134,24 @@ export default function ReferralsReportView({
                           </div>
                         </div>
                       </td>
-                      <td>{ref.referralsCount}</td>
-                      <td>Total : {ref.dollarsEarned}</td>
+                      <td>
+                        <span style={{ fontWeight: '600' }}>{ref.referralsCount}</span>
+                      </td>
+                      <td>Total : ${ref.dollarsEarned}</td>
+                      {/* <td style={{ fontSize: '12px', color: '#475569' }}>
+                        {ref.latestReferralDate ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                            <Calendar size={13} color="#0076a3" />
+                            {new Date(ref.latestReferralDate).toLocaleDateString(undefined, {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td> */}
                       <td style={{ textAlign: 'center' }}>
                         <button
                           type="button"
@@ -253,13 +292,13 @@ export default function ReferralsReportView({
       {/* ========== VIEW LIST MODAL ========== */}
       {showViewListModal && selectedReferrer && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px' }}>
-          <div style={{ background: '#fff', borderRadius: '14px', width: '100%', maxWidth: '800px', boxShadow: '0 25px 50px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+          <div style={{ background: '#fff', borderRadius: '14px', width: '100%', maxWidth: '850px', boxShadow: '0 25px 50px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
             <div style={{ background: 'linear-gradient(135deg, #0076a3, #005f8a)', padding: '18px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <p style={{ color: '#fff', fontWeight: '700', fontSize: '16px', margin: 0 }}>
                   Referred Friends - {selectedReferrer.name}
                 </p>
-                <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px', margin: 0 }}>
+                <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '12px', margin: '3px 0 0' }}>
                   Total Referrals: {selectedReferrer.referralsCount} | Total Earned: ${selectedReferrer.dollarsEarned}
                 </p>
               </div>
@@ -285,6 +324,7 @@ export default function ReferralsReportView({
                           <th style={{ padding: '12px', fontWeight: '700', textAlign: 'left', color: '#1e293b' }}>Email</th>
                           <th style={{ padding: '12px', fontWeight: '700', textAlign: 'left', color: '#1e293b' }}>Mobile</th>
                           <th style={{ padding: '12px', fontWeight: '700', textAlign: 'left', color: '#1e293b' }}>Year</th>
+                          <th style={{ padding: '12px', fontWeight: '700', textAlign: 'left', color: '#1e293b' }}>Referred Date</th>
                           <th style={{ padding: '12px', fontWeight: '700', textAlign: 'left', color: '#1e293b' }}>Amount</th>
                         </tr>
                       </thead>
@@ -312,13 +352,22 @@ export default function ReferralsReportView({
                                 </td>
                                 <td style={{ padding: '12px', color: '#334155' }}>{member.mobile}</td>
                                 <td style={{ padding: '12px', color: '#334155' }}>{member.year}</td>
-                                <td style={{ padding: '12px', color: '#334155' }}>{member.amount}</td>
+                                <td style={{ padding: '12px', color: '#334155' }}>
+                                  {member.createdAt && member.createdAt !== '—'
+                                    ? new Date(member.createdAt).toLocaleDateString(undefined, {
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric'
+                                      })
+                                    : '—'}
+                                </td>
+                                <td style={{ padding: '12px', color: '#334155' }}>${member.amount}</td>
                               </tr>
                             );
                           })
                         ) : (
                           <tr>
-                            <td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>No referred members found.</td>
+                            <td colSpan="7" style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>No referred members found.</td>
                           </tr>
                         )}
                       </tbody>
@@ -329,15 +378,15 @@ export default function ReferralsReportView({
                   <div style={{ marginTop: '16px', padding: '12px 16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: '600', color: '#334155' }}>
                       <span>Total Amount</span>
-                      <span>{selectedReferrer.dollarsEarned}</span>
+                      <span>${selectedReferrer.dollarsEarned || 0}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: '600', color: '#334155', marginTop: '8px' }}>
                       <span>Paid Amount</span>
-                      <span>0</span>
+                      <span>${selectedReferrer.paidAmount || 0}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: '600', color: '#334155', marginTop: '8px' }}>
                       <span>Balance Amount</span>
-                      <span>{selectedReferrer.dollarsEarned}</span>
+                      <span>${selectedReferrer.balanceAmount || 0}</span>
                     </div>
                   </div>
                 </>

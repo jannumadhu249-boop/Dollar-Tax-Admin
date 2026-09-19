@@ -11,12 +11,11 @@ const getAuthToken = () => {
   throw new Error('Authentication token not found. Please log in.');
 };
 
-export default function ReferralsReport({ selectedYear }) {
+export default function ReferralsReport({ selectedYear, setSelectedYear }) {
   // ---------- Filter state ----------
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [submittedSearch, setSubmittedSearch] = useState({ term: '', from: '', to: '' });
   const [page, setPage] = useState(1);
   const limit = 10;
 
@@ -25,10 +24,10 @@ export default function ReferralsReport({ selectedYear }) {
   const [pagination, setPagination] = useState({ currentPage: 1, limit: 10, totalRecords: 0, totalPages: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [activeYearId, setActiveYearId] = useState('');
 
   // ---------- OTP state ----------
   const [unmaskedFields, setUnmaskedFields] = useState({});
-  const [verificationOtp, setVerificationOtp] = useState('');
   const [verificationFieldKey, setVerificationFieldKey] = useState(null);
   const [verificationItemId, setVerificationItemId] = useState(null);
   const [verificationType, setVerificationType] = useState(null);
@@ -44,22 +43,63 @@ export default function ReferralsReport({ selectedYear }) {
   const [selectedReferrer, setSelectedReferrer] = useState(null);
   const [viewListLoading, setViewListLoading] = useState(false);
 
-  // ---------- Derived ----------
+  // ---------- Derived numeric year ----------
   const numericYear = selectedYear ? selectedYear.replace('TY', '') : '2026';
 
+  // Fetch active year ID matching selected numericYear
+  useEffect(() => {
+    let isMounted = true;
+    const fetchYearId = async () => {
+      try {
+        const token = getAuthToken();
+        const res = await fetch(URLS.GetYears, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (res.ok) {
+          const result = await res.json();
+          if (isMounted && result.success && Array.isArray(result.data)) {
+            const found = result.data.find(y => String(y.name) === String(numericYear));
+            if (found && found._id) {
+              setActiveYearId(found._id);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Error fetching year ID in ReferralsReport:', err);
+      }
+    };
+    fetchYearId();
+    return () => { isMounted = false; };
+  }, [numericYear]);
+
   // ---------- API calls ----------
-  const fetchReferrals = async (pageNum = page, email = searchTerm, from = dateFrom, to = dateTo) => {
+  const fetchReferrals = async (pageNum = 1, searchEmail = searchTerm, from = dateFrom, to = dateTo, yr = numericYear) => {
     setLoading(true);
     setError('');
     try {
       const token = getAuthToken();
+      const currentYearNum = yr || (selectedYear ? selectedYear.replace('TY', '') : '2026');
+
+      // Scope date filter to the selected year if no custom dates were supplied
+      const yearStartDate = currentYearNum ? `${currentYearNum}-01-01` : '';
+      const yearEndDate = currentYearNum ? `${currentYearNum}-12-31` : '';
+      const effFrom = from || yearStartDate;
+      const effTo = to || yearEndDate;
+
       const body = {
         page: pageNum,
         limit,
-        email: email || '',
-        from_date: from || '',
-        to_date: to || ''
+        email: searchEmail || '',
+        from_date: effFrom,
+        to_date: effTo,
+        year: currentYearNum,
+        year_id: activeYearId || ''
       };
+
       const response = await fetch(URLS.GetReferalReport, {
         method: 'POST',
         headers: {
@@ -70,19 +110,87 @@ export default function ReferralsReport({ selectedYear }) {
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const result = await response.json();
+
       if (result.success) {
-        const mapped = result.data.map((item, idx) => ({
+        const rawMembers = Array.isArray(result.data) ? result.data : [];
+
+        // Enrich each referrer with their referrals and latest referral date
+        const membersWithDetails = await Promise.all(
+          rawMembers.map(async (item) => {
+            const memberId = item.member_id || item._id;
+            try {
+              const memRes = await fetch(`${URLS.ViewReferalMember}${memberId}`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`
+                }
+              });
+              if (memRes.ok) {
+                const memData = await memRes.json();
+                if (memData.success && Array.isArray(memData.data)) {
+                  // Filter member's referrals to the current year
+                  const refs = currentYearNum
+                    ? memData.data.filter(r => !r.year?.name || String(r.year.name) === String(currentYearNum))
+                    : memData.data;
+
+                  const latestTime = refs.reduce((max, r) => {
+                    const t = r.createdAt ? new Date(r.createdAt).getTime() : 0;
+                    return t > max ? t : max;
+                  }, 0);
+
+                  return {
+                    ...item,
+                    memberId,
+                    latestReferralDate: latestTime > 0 ? new Date(latestTime).toISOString() : null,
+                    referralsCount: refs.length > 0 ? refs.length : (item.referrals_count || 0),
+                    cachedRefs: refs,
+                    summary: memData.summary || null
+                  };
+                }
+              }
+            } catch (e) {
+              console.warn('Error fetching member referrals for sorting:', e);
+            }
+            return {
+              ...item,
+              memberId,
+              latestReferralDate: null,
+              referralsCount: item.referrals_count || 0,
+              cachedRefs: [],
+              summary: null
+            };
+          })
+        );
+
+        // Sort members: latest referral on top (DESC)
+        membersWithDetails.sort((a, b) => {
+          const timeA = a.latestReferralDate ? new Date(a.latestReferralDate).getTime() : 0;
+          const timeB = b.latestReferralDate ? new Date(b.latestReferralDate).getTime() : 0;
+          return timeB - timeA;
+        });
+
+        const mapped = membersWithDetails.map((item, idx) => ({
           sNo: (pageNum - 1) * limit + idx + 1,
           _id: item._id,
-          memberId: item.member_id || item._id,
+          memberId: item.memberId,
           name: item.name || '—',
           email: item.email || '—',
-          referralsCount: item.referrals_count || 0,
+          referralsCount: item.referralsCount,
           dollarsEarned: item.dollars_earned || 0,
           balance: item.balance_amount || 0,
+          latestReferralDate: item.latestReferralDate,
+          cachedRefs: item.cachedRefs,
+          summary: item.summary
         }));
+
         setReferralsData(mapped);
-        setPagination(result.pagination || { currentPage: 1, limit: 10, totalRecords: 0, totalPages: 0 });
+        setPagination(result.pagination || {
+          currentPage: pageNum,
+          limit,
+          totalRecords: mapped.length,
+          totalPages: Math.ceil(mapped.length / limit)
+        });
       } else {
         setError(result.message || 'Failed to fetch referrals.');
       }
@@ -96,39 +204,61 @@ export default function ReferralsReport({ selectedYear }) {
   const fetchMemberReferrals = async (memberId) => {
     setViewListLoading(true);
     try {
-      const token = getAuthToken();
-      const response = await fetch(`${URLS.ViewReferalMember}${memberId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+      const member = referralsData.find(r => r.memberId === memberId);
+      let rawRefs = member?.cachedRefs;
+      let summaryData = member?.summary;
+
+      if (!rawRefs || rawRefs.length === 0) {
+        const token = getAuthToken();
+        const response = await fetch(`${URLS.ViewReferalMember}${memberId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          }
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const result = await response.json();
+        if (result.success && Array.isArray(result.data)) {
+          rawRefs = result.data;
+          summaryData = result.summary;
+        } else {
+          throw new Error(result.message || 'Failed to fetch member referrals.');
         }
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const result = await response.json();
-      if (result.success) {
-        const member = referralsData.find(r => r.memberId === memberId);
-        const referrer = {
-          name: member?.name || '—',
-          referralsCount: member?.referralsCount || 0,
-          dollarsEarned: member?.dollarsEarned || 0,
-          referredMembers: result.data.map(item => ({
-            _id: item._id, // referral id
-            name: item.friend_name || '—',
-            email: item.friend_email || '—',
-            mobile: item.friend_mobile || '—',
-            year: item.year?.name || '—',
-            amount: item.amount || 0,
-            paidAmount: item.paid_amount || 0,
-            status: item.status || '—',
-            createdAt: item.createdAt || '—'
-          }))
-        };
-        setSelectedReferrer(referrer);
-        setShowViewListModal(true);
-      } else {
-        setError(result.message || 'Failed to fetch member referrals.');
       }
+
+      // Filter by selected year
+      const yearFilteredRefs = numericYear
+        ? rawRefs.filter(item => !item.year?.name || String(item.year.name) === String(numericYear))
+        : rawRefs;
+
+      // Sort latest referrals on top (DESC)
+      const sortedRefs = [...yearFilteredRefs].sort((a, b) => {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeB - timeA;
+      });
+
+      const referrer = {
+        name: member?.name || '—',
+        referralsCount: sortedRefs.length,
+        dollarsEarned: summaryData?.totalAmount ?? (member?.dollarsEarned || 0),
+        paidAmount: summaryData?.paidAmount ?? 0,
+        balanceAmount: summaryData?.balanceAmount ?? (member?.balance || 0),
+        referredMembers: sortedRefs.map(item => ({
+          _id: item._id, // referral id
+          name: item.friend_name || '—',
+          email: item.friend_email || '—',
+          mobile: item.friend_mobile || '—',
+          year: item.year?.name || numericYear || '—',
+          amount: item.amount || 0,
+          paidAmount: item.paid_amount || 0,
+          status: item.status || '—',
+          createdAt: item.createdAt || '—'
+        }))
+      };
+      setSelectedReferrer(referrer);
+      setShowViewListModal(true);
     } catch (err) {
       setError(err.message || 'Network error.');
     } finally {
@@ -238,16 +368,28 @@ export default function ReferralsReport({ selectedYear }) {
     return () => clearInterval(timer);
   }, [showOtpModal]);
 
-  // ---------- Fetch on filter change ----------
+  // ---------- Fetch on selectedYear change or activeYearId resolution ----------
   useEffect(() => {
-    fetchReferrals(1);
     setPage(1);
-  }, [searchTerm, dateFrom, dateTo, page, selectedYear]);
+    setDateFrom('');
+    setDateTo('');
+    setSearchTerm('');
+    fetchReferrals(1, '', '', '', numericYear);
+  }, [selectedYear, activeYearId]);
 
   // ---------- Handlers ----------
   const handleSubmit = (e) => {
     e.preventDefault();
-    setSubmittedSearch({ term: searchTerm, from: dateFrom, to: dateTo });
+    setPage(1);
+    fetchReferrals(1, searchTerm, dateFrom, dateTo, numericYear);
+  };
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setDateFrom('');
+    setDateTo('');
+    setPage(1);
+    fetchReferrals(1, '', '', '', numericYear);
   };
 
   const handleViewList = (referrer) => {
@@ -265,6 +407,14 @@ export default function ReferralsReport({ selectedYear }) {
     return 'XXXXXXXXXX.' + (parts[parts.length - 1]?.split('.').pop() || '');
   };
 
+  // Client-side search matching by name or email
+  const displayedReferrals = searchTerm
+    ? referralsData.filter(r =>
+        (r.name && r.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (r.email && r.email.toLowerCase().includes(searchTerm.toLowerCase()))
+      )
+    : referralsData;
+
   // ---------- Render ----------
   return (
     <ReferralsReportView
@@ -276,15 +426,16 @@ export default function ReferralsReport({ selectedYear }) {
       dateTo={dateTo}
       setDateTo={setDateTo}
       handleSubmit={handleSubmit}
+      handleResetFilters={handleResetFilters}
       // Data
-      filteredReferrals={referralsData}
+      filteredReferrals={displayedReferrals}
       numericYear={numericYear}
       loading={loading}
       error={error}
       pagination={pagination}
       onPageChange={(newPage) => {
         setPage(newPage);
-        fetchReferrals(newPage);
+        fetchReferrals(newPage, searchTerm, dateFrom, dateTo, numericYear);
       }}
       // OTP
       showOtpModal={showOtpModal}

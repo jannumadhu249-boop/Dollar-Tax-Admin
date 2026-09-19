@@ -13,6 +13,38 @@ const getAuthToken = () => {
   return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbl9pZCI6IjZhNThiZDFjNzE1ZjE4ZTYxZDQxY2Y5MiIsImVtYWlsIjoiZGl2eWFwZW5keWFsYTA3MTdAZ21haWwuY29tIiwiYWRtaW5fc3RhZ2UiOiJzdXBlciIsImlhdCI6MTc4NDIwNDE1OCwiZXhwIjoxODE1NzQwMTU4fQ.1pjPlGU41H1G5ei3AfTEcaWk9O1eyRTG769xnpj5xts';
 };
 
+/* ─── Reverse map: backend filestatus code → WORKFLOW_STATUSES display name ─── */
+const CODE_TO_DISPLAY = {
+  'RGO':     'Registered Users',
+  'SP':      'Scheduling Pending',
+  'BIP':     'Information Pending',
+  'IP':      'Interview Pending',
+  'DP':      'Documents Pending',
+  'PP_I':    'Preparation - 1',
+  'PP_II':   'Preparation - 2',
+  'TR_S_I':  'Review & Summary 1',
+  'TR_S_II': 'Review & Summary 2',
+  'ITIN':    'ITIN Files',
+  'RE_ES':   'Revised Estimate',
+  'PP_EF':   'Payment Pending - Efiling',
+  'PP_PF':   'Payment Pending - Paper filing',
+  'FPR':     'Fee Payment Received - I',
+  'FPR_II':  'Fee Payment Received - II',
+  'FPR_2':   'Fee Payment Received - II',
+  'CR_EF':   'Client Review - Efiling',
+  'CR_PF':   'Client Review - Paper Filing',
+  'EFP_I':   'Efiling Pending - 1',
+  'EFP_II':  'Efiling Pending - 2',
+  'EF_AA_I': 'E - Filed & Awaiting Acceptance - 1',
+  'EF_AA_II':'E - Filed & Awaiting Acceptance - 2',
+  'EF_REJ':  'E - Filed & Rejected',
+  'C_R':     'City Return',
+  'EFA_FC':  'E-Filing Accepted & Filing Complete',
+  'PF_P':    'Paper Filing Pending',
+  'PF_D':    'Paper Filing Done',
+  'CANC':    'Cancelled',
+};
+
 /* ─────────────────────────────────────────────────────────────
    OTP Modal (Email OTP Verification via API)
 ───────────────────────────────────────────────────────────── */
@@ -476,6 +508,7 @@ const statusColor = (s = '') => {
 
 function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, onSendEmailOtp, onVerifyEmailOtp }) {
   const [activeTab, setActiveTab] = useState('personal');
+  const [tabRefreshKey, setTabRefreshKey] = useState(0);
   const [unmasked, setUnmasked] = useState({});
   const [otpOpen, setOtpOpen] = useState(false);
   const [bankModalOpen, setBankModalOpen] = useState(false);
@@ -484,7 +517,11 @@ function MemberDetailFullPage({ member, onBack, commentsHistory, onAddComment, o
   const [commentPopup, setCommentPopup] = useState(null); // { text: string } | null
   const [commentStatus, setCommentStatus] = useState(member.status);
   const [fileTypeInput, setFileTypeInput] = useState('E-Filing');
-  const [statusInput, setStatusInput] = useState(member.status || 'EFA_FC');
+  // Use raw filestatus code (from member.raw) to resolve the correct WORKFLOW_STATUSES display name.
+  // Falls back to member.status (backend display name) or first status.
+  const [statusInput, setStatusInput] = useState(
+    CODE_TO_DISPLAY[member.raw?.filestatus || ''] || member.status || 'Registered Users'
+  );
 
   // Profile API State
   const [profileData, setProfileData] = useState(null);
@@ -744,7 +781,10 @@ useEffect(() => {
       defaultFileType = 'E-Filing';
     }
     setFileTypeInput(defaultFileType);
-    setStatusInput(member.status || 'EFA_FC');
+    // Re-resolve the display name from the raw status code whenever the member changes.
+    setStatusInput(
+      CODE_TO_DISPLAY[member.raw?.filestatus || ''] || member.status || 'Registered Users'
+    );
   }, [member]);
 
 const handleDeleteDoc = async (docId) => {
@@ -923,11 +963,12 @@ const handleDeleteDoc = async (docId) => {
     }
   };
 
+  // Refresh fileInfo data whenever member changes OR fileInfo tab becomes active
   useEffect(() => {
     if (activeTab === 'fileInfo' || member) {
       fetchFileInfoHistory();
     }
-  }, [member, activeTab]);
+  }, [member]);
 
   const handleCreateFileInfoStatus = async (e) => {
     e.preventDefault();
@@ -936,10 +977,7 @@ const handleDeleteDoc = async (docId) => {
       setFileInfoErrorMsg('Member ID is missing.');
       return;
     }
-    if (!commentsInput.trim()) {
-      setFileInfoErrorMsg('Please enter comments.');
-      return;
-    }
+    // Comments are optional — no mandatory check.
 
     setFileInfoErrorMsg('');
     setFileInfoSuccessMsg('');
@@ -1066,18 +1104,38 @@ const handleDeleteDoc = async (docId) => {
     }
   }, [member]);
 
-  // ---- Also fetch when upload tab becomes active; clear stale alerts ----
+  // ---- Per-tab refresh: reload the right data whenever activeTab changes ----
   useEffect(() => {
-    if (activeTab === 'upload') {
-      const memberId = member._id || member.sNo;
-      if (memberId) {
+    const memberId = member._id || member.sNo;
+    if (!memberId) return;
+
+    switch (activeTab) {
+      case 'personal':
+      case 'spouse':
+      case 'dependent':
+      case 'bank':
+      case 'address':
+      case 'download':
+      case 'interview':
+        fetchMemberProfile(memberId);
+        break;
+      case 'pay':
+        fetchPaymentHistory();
+        break;
+      case 'upload':
         fetchAdminUploadedDocs(memberId);
-      }
-      // Clear any stale success/error messages when re-entering the tab
-      setUploadSuccess('');
-      setUploadError('');
+        fetchRecentFiveYears();
+        // Clear stale alerts when switching to upload tab
+        setUploadSuccess('');
+        setUploadError('');
+        break;
+      case 'fileInfo':
+        fetchFileInfoHistory();
+        break;
+      default:
+        break;
     }
-  }, [activeTab]);
+  }, [activeTab, tabRefreshKey]);
 
   const details = getMemberDetails(member);
   const history = commentsHistory?.[member.sNo || member._id] || [
@@ -1213,6 +1271,7 @@ const handleDeleteDoc = async (docId) => {
                 className={`detail-tab-btn ${activeTab === tab.id ? 'active' : ''}`}
                 onClick={() => {
                   setActiveTab(tab.id);
+                  setTabRefreshKey(prev => prev + 1);
                   if (tab.id === 'fileInfo') setCommentStatus(member.status);
                 }}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
@@ -1260,7 +1319,7 @@ const handleDeleteDoc = async (docId) => {
                         { label: 'STATE', value: profileData?.personalInfo?.state || '—' },
                         { label: 'ZIPCODE', value: profileData?.personalInfo?.zipcode || '—' },
                         { label: 'FILING TYPE', value: profileData?.personalInfo?.filing_type || '—' },
-                        { label: 'DATE OF MARRIAGE', value: profileData?.personalInfo?.date_of_marriage },
+                        { label: 'DATE OF MARRIAGE', value: profileData?.personalInfo?.date_of_marriage ? new Date(profileData.personalInfo.date_of_marriage).toLocaleDateString() : '—' },
                         { label: 'REFERED EMAIL', value: profileData?.personalInfo?.refer_email },
                         { label: 'REFERED NAME', value: profileData?.personalInfo?.refer_full_name },
                         { label: 'FILING STATUS', value: profileData?.personalInfo?.filing_status || member.raw?.filestatus || member.status || '—' },
@@ -1751,14 +1810,14 @@ const handleDeleteDoc = async (docId) => {
                           ) : '—'}
                         </td>
                       </tr>
-                      {profileData.interview._id && (
+                      {/* {profileData.interview._id && (
                         <tr>
                           <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>Interview Record ID</td>
                           <td style={{ fontFamily: 'monospace', fontSize: '12px', color: '#64748b' }}>
                             {profileData.interview._id}
                           </td>
                         </tr>
-                      )}
+                      )} */}
                     </tbody>
                   </table>
                 </div>
@@ -2221,7 +2280,7 @@ const handleDeleteDoc = async (docId) => {
                       onChange={e => setFileTypeInput(e.target.value)}
                     >
                       <option value="E-Filing">E-Filing</option>
-                      <option value="Paper-Filing">Paper Filing</option>
+                      <option value="Paper Filing">Paper Filing</option>
                     </select>
                   </div>
 
@@ -2243,7 +2302,7 @@ const handleDeleteDoc = async (docId) => {
 
                 {/* Comments Textarea */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '18px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>Comments <span style={{ color: '#dc2626' }}>*</span></label>
+                  <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>Comments</label>
                   <textarea
                     rows="4"
                     className="search-input-box"
@@ -2251,7 +2310,7 @@ const handleDeleteDoc = async (docId) => {
                     placeholder="Enter administrative workflow update comments..."
                     value={commentsInput}
                     onChange={e => setCommentsInput(e.target.value)}
-                    required
+                  // required
                   />
                 </div>
 
@@ -2263,7 +2322,9 @@ const handleDeleteDoc = async (docId) => {
                     style={{ padding: '8px 20px', fontWeight: '600' }}
                     onClick={() => {
                       setCommentsInput('');
-                      setStatusInput(member.status || 'EFA_FC');
+                      setStatusInput(
+                        CODE_TO_DISPLAY[member.raw?.filestatus || ''] || member.status || 'Registered Users'
+                      );
                       setFileTypeInput(member.filingType || 'E-Filing');
                       setFileInfoErrorMsg('');
                     }}
@@ -2272,11 +2333,11 @@ const handleDeleteDoc = async (docId) => {
                   </button>
                   <button
                     type="submit"
-                    disabled={isSubmittingFileInfo || !commentsInput.trim()}
+                    disabled={isSubmittingFileInfo}
                     style={{
                       background: '#0076a3', padding: '8px 22px', border: 'none', fontWeight: '600',
-                      color: '#fff', borderRadius: '6px', cursor: isSubmittingFileInfo || !commentsInput.trim() ? 'not-allowed' : 'pointer',
-                      opacity: isSubmittingFileInfo || !commentsInput.trim() ? 0.6 : 1,
+                      color: '#fff', borderRadius: '6px', cursor: isSubmittingFileInfo ? 'not-allowed' : 'pointer',
+                      opacity: isSubmittingFileInfo ? 0.6 : 1,
                       display: 'flex', alignItems: 'center', gap: '6px'
                     }}
                   >
@@ -2566,6 +2627,7 @@ export default function MemberTableLayout({
   statusCode = 'all',
   members: initialMembersProp,
   selectedYear = `TY${new Date().getFullYear()}`,
+  refreshKey,
 }) {
   const [numericYear, setNumericYear] = useState(() => String(selectedYear).replace('TY', ''));
   // Update numericYear when selectedYear prop changes
@@ -2595,6 +2657,17 @@ export default function MemberTableLayout({
       sessionStorage.removeItem('selectedMemberView');
     }
   }, [selectedMember]);
+
+  // When sidebar item is clicked again (refreshKey bumps), close detail view and go back to table
+  useEffect(() => {
+    if (refreshKey === undefined) return;
+    sessionStorage.removeItem('selectedMemberView');
+    setSelectedMember(null);
+    setSearchTerm('');
+    setFilterDate('');
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+  }, [refreshKey]);
+
   const [otpOpen, setOtpOpen] = useState(false);
   const [pendingMemberId, setPendingMemberId] = useState(null);
   const [commentsHistory, setCommentsHistory] = useState(INITIAL_COMMENTS || {});
@@ -2756,7 +2829,7 @@ export default function MemberTableLayout({
   searchTerm,
   filterDate,
   pagination.currentPage,
-
+  refreshKey,
 ]);
 
 // Close detail view when any list filter changes

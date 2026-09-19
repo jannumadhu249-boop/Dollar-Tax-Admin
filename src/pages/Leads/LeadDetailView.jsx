@@ -23,7 +23,7 @@ const formatDate = (dateStr) => {
 const statusColor = (s) => {
   const lower = (s || '').toLowerCase();
   if (lower === 'completed') return { bg: 'rgba(40,167,69,0.12)', color: '#28a745' };
-  if (lower === 'pending')   return { bg: 'rgba(255,140,0,0.12)',  color: '#e07b00' };
+  if (lower === 'pending') return { bg: 'rgba(255,140,0,0.12)', color: '#e07b00' };
   if (lower === 'in progress') return { bg: 'rgba(0,118,163,0.12)', color: '#0076a3' };
   return { bg: '#f0f0f0', color: '#555' };
 };
@@ -31,9 +31,9 @@ const statusColor = (s) => {
 /* ─── Add Discussion Modal (with real API call) ─── */
 function AddDiscussionModal({ leadId, onClose, onAdded }) {
   const [followupDate, setFollowupDate] = useState('');
-  const [description, setDescription]  = useState('');
-  const [submitting, setSubmitting]     = useState(false);
-  const [error, setError]               = useState('');
+  const [description, setDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -162,9 +162,9 @@ function AddDiscussionModal({ leadId, onClose, onAdded }) {
 
 /* ─── Lead Detail View ─── */
 export default function LeadDetailView({ lead, onBack }) {
-  const [activeTab, setActiveTab]             = useState('general');
+  const [activeTab, setActiveTab] = useState('general');
   const [showAddDiscussion, setShowAddDiscussion] = useState(false);
-  const [discussions, setDiscussions]         = useState([]);
+  const [discussions, setDiscussions] = useState([]);
   const [loadingDiscussions, setLoadingDiscussions] = useState(false);
   const [discussionError, setDiscussionError] = useState('');
 
@@ -206,14 +206,14 @@ export default function LeadDetailView({ lead, onBack }) {
 
   /* ── General tab rows ── */
   const GENERAL_ROWS = [
-    { label: 'Name',          value: lead.name },
-    { label: 'Email',         value: lead.email, isEmail: true },
-    { label: 'Mobile',        value: lead.mobile },
+    { label: 'Name', value: lead.name },
+    { label: 'Email', value: lead.email, isEmail: true },
+    { label: 'Mobile', value: lead.mobile },
     // { label: 'Referred By',   value: lead.referred_by || lead.referredBy },
     { label: 'Follow-Up Date', value: formatDate(lead.followup_date || lead.followUpDate) },
     // { label: 'Created On',    value: formatDate(lead.createdAt || lead.date) },
     // { label: 'Status',        value: lead.status || 'Pending', isStatus: true },
-    { label: 'Description',   value: lead.description },
+    { label: 'Description', value: lead.description },
   ];
 
   return (

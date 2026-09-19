@@ -166,6 +166,7 @@ export default function App() {
 
   // Default on login: All Registered
   const [selectedStatus, setSelectedStatus] = useState('all-registered');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // URL Path Sync (removed hash-based routing)
   useEffect(() => {
@@ -207,9 +208,11 @@ export default function App() {
   }, [isLoggedIn, userPermissions, selectedStatus, activeTab]);
 
   const handleFilterChange = (statusKey) => {
+    sessionStorage.removeItem('selectedMemberView');
     setSelectedYear('');
     setSelectedStatus(statusKey);
     setActiveTab('members');
+    setRefreshKey(prev => prev + 1);
     if (ROUTE_MAP[statusKey]) {
       window.history.pushState(null, '', ROUTE_MAP[statusKey]);
     }
@@ -235,7 +238,7 @@ export default function App() {
       switch (selectedStatus) {
         // ── Default / All Registered — uses the navbar-selected year ──
         case 'all-registered':
-          return <AllRegistered selectedYear={selectedYear} />;
+          return <AllRegistered key={`all-reg-${refreshKey}`} selectedYear={selectedYear} refreshKey={refreshKey} />;
 
         // ── Processing Folder ──
         case 'registered-users':
@@ -330,7 +333,7 @@ export default function App() {
           return <Staff />;
 
         default:
-          return <AllRegistered selectedYear={selectedYear} />;
+          return <AllRegistered key={`all-reg-${refreshKey}`} selectedYear={selectedYear} refreshKey={refreshKey} />;
       }
     }
 
@@ -356,7 +359,7 @@ export default function App() {
         return <DocumentHub />;
 
       default:
-        return <AllRegistered selectedYear={selectedYear} />;
+        return <AllRegistered key={`all-reg-${refreshKey}`} selectedYear={selectedYear} refreshKey={refreshKey} />;
     }
   };
 
@@ -391,6 +394,10 @@ export default function App() {
       <Navbar
         activeTab={activeTab}
         setActiveTab={(tab) => {
+          if (tab === 'members') {
+            sessionStorage.removeItem('selectedMemberView');
+            setRefreshKey(prev => prev + 1);
+          }
           setActiveTab(tab);
           if (tab !== 'members') {
             window.history.pushState(null, '', `/${tab}`);
@@ -406,9 +413,11 @@ export default function App() {
         setSelectedYear={setSelectedYear}
         userPermissions={userPermissions}
         onSelectNavbarYear={(yearStr) => {
+          sessionStorage.removeItem('selectedMemberView');
           setSelectedYear(yearStr);
           setSelectedStatus('all-registered');
           setActiveTab('members');
+          setRefreshKey(prev => prev + 1);
           window.history.pushState(null, '', ROUTE_MAP['all-registered'] || '/all-registered');
         }}
       />
@@ -418,6 +427,7 @@ export default function App() {
           currentFilter={selectedStatus}
           onFilterChange={handleFilterChange}
           userPermissions={userPermissions}
+          refreshKey={refreshKey}
         />
         <main className="main-viewport">
           {renderViewContent()}

@@ -1,7 +1,7 @@
 import React from 'react';
 import MemberTableLayout from '../components/MemberTableLayout';
 
-export default function AllRegistered({ selectedYear = '' }) {
+export default function AllRegistered({ selectedYear = '', refreshKey }) {
   const displayTitle = selectedYear ? `${selectedYear} All Registered Members` : 'All Registered Members';
   return (
     <MemberTableLayout
@@ -9,6 +9,7 @@ export default function AllRegistered({ selectedYear = '' }) {
       subtitle="Overview of all registered member tax returns"
       statusCode="all"
       selectedYear={selectedYear}
+      refreshKey={refreshKey}
     />
   );
 }

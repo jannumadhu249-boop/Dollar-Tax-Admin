@@ -1,14 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Lock, Eye, EyeOff, User, Users, Landmark, FileText, Download, MessageSquare, Send, Calendar, CheckCircle2 } from 'lucide-react';
 import { getMemberDetails, WORKFLOW_STATUSES } from '../data/mockMembers';
 import OtpVerificationModal from './OtpVerificationModal';
 
 export default function MemberDetailModal({ member, isOpen, onClose, onUpdateMemberStatus }) {
   const [activeTab, setActiveTab] = useState('personal');
+  const [tabRefreshKey, setTabRefreshKey] = useState(0);
+  const [tabLoading, setTabLoading] = useState(false);
   const [unmaskedFields, setUnmaskedFields] = useState({});
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [pendingFieldKey, setPendingFieldKey] = useState(null);
   const [pendingFieldName, setPendingFieldName] = useState('');
+
+  // Simulate tab data reload on each tab switch or re-click
+  useEffect(() => {
+    if (!isOpen) return;
+    setTabLoading(true);
+    const t = setTimeout(() => setTabLoading(false), 250);
+    return () => clearTimeout(t);
+  }, [activeTab, tabRefreshKey, isOpen]);
 
   // Comment & Status Form
   const [commentText, setCommentText] = useState('');
@@ -96,7 +106,10 @@ export default function MemberDetailModal({ member, isOpen, onClose, onUpdateMem
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                  setActiveTab(tab.id);
+                  setTabRefreshKey(prev => prev + 1);
+                }}
                   style={{
                     ...styles.tabBtn,
                     borderBottom: isActive ? '3px solid #0076a3' : '3px solid transparent',
@@ -113,8 +126,14 @@ export default function MemberDetailModal({ member, isOpen, onClose, onUpdateMem
 
           {/* Main Body View */}
           <div style={styles.bodyContent}>
+            {tabLoading && (
+              <div style={{ textAlign: 'center', padding: '12px', color: '#0076a3', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                <span style={{ display: 'inline-block', width: '14px', height: '14px', border: '2px solid #0076a3', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+                Refreshing...
+              </div>
+            )}
             {/* Personal Info Tab */}
-            {activeTab === 'personal' && (
+            {!tabLoading && activeTab === 'personal' && (
               <div style={styles.grid2Col}>
                 <FieldRow label="First Name" value={details.personal.firstName} />
                 <FieldRow label="Last Name" value={details.personal.lastName} />
@@ -139,7 +158,7 @@ export default function MemberDetailModal({ member, isOpen, onClose, onUpdateMem
             )}
 
             {/* Spouse Info Tab */}
-            {activeTab === 'spouse' && (
+            {!tabLoading && activeTab === 'spouse' && (
               details.spouse.firstName ? (
                 <div style={styles.grid2Col}>
                   <FieldRow label="Spouse First Name" value={details.spouse.firstName} />
@@ -155,7 +174,7 @@ export default function MemberDetailModal({ member, isOpen, onClose, onUpdateMem
             )}
 
             {/* Dependents Tab */}
-            {activeTab === 'dependent' && (
+            {!tabLoading && activeTab === 'dependent' && (
               details.dependents.length > 0 ? (
                 <table className="corporate-table" style={{ width: '100%' }}>
                   <thead>
@@ -185,7 +204,7 @@ export default function MemberDetailModal({ member, isOpen, onClose, onUpdateMem
             )}
 
             {/* Bank Details Tab */}
-            {activeTab === 'bank' && (
+            {!tabLoading && activeTab === 'bank' && (
               <div style={styles.grid2Col}>
                 <FieldRow label="Bank Name" value={details.bank.bankName} />
                 <FieldRow label="Account Type" value={details.bank.accountType} />
@@ -200,7 +219,7 @@ export default function MemberDetailModal({ member, isOpen, onClose, onUpdateMem
             )}
 
             {/* File Info Tab */}
-            {activeTab === 'fileInfo' && (
+            {!tabLoading && activeTab === 'fileInfo' && (
               <div style={styles.grid2Col}>
                 <FieldRow label="File Number" value={member.fileNo} />
                 <FieldRow label="Filing Type" value={member.filingType} />
@@ -212,7 +231,7 @@ export default function MemberDetailModal({ member, isOpen, onClose, onUpdateMem
             )}
 
             {/* Comments & Status Tab */}
-            {activeTab === 'comments' && (
+            {!tabLoading && activeTab === 'comments' && (
               <div>
                 <form onSubmit={handleAddComment} style={styles.commentForm}>
                   <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#1e293b' }}>Add Workflow Update / Comment</h4>

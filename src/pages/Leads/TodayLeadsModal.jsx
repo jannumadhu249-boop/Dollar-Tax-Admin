@@ -184,7 +184,7 @@ export default function TodayLeadsModal({
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>
-                  <th style={{ padding: '10px 12px', fontWeight: 600 }}>#</th>
+                  <th style={{ padding: '10px 12px', fontWeight: 600 }}>Sl.No</th>
                   <th style={{ padding: '10px 12px', fontWeight: 600 }}>Lead Name</th>
                   <th style={{ padding: '10px 12px', fontWeight: 600 }}>Contact</th>
                   <th style={{ padding: '10px 12px', fontWeight: 600 }}>Scheduled / Date</th>
