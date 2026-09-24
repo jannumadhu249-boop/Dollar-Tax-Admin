@@ -631,7 +631,7 @@ export default function ClientSearch({ member, selectedYear, setSelectedYear }) 
   // ---- API state ----
   const [years, setYears] = useState([]);
   const [clients, setClients] = useState([]);
-  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalRecords: 0, limit: 10 });
+  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalRecords: 0, limit: 20 });
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState('');
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -663,7 +663,7 @@ export default function ClientSearch({ member, selectedYear, setSelectedYear }) 
     }
   };
 
-  const fetchClients = async (page = 1, limit = 10, searchBy = '', search = '', yearId = '') => {
+  const fetchClients = async (page = 1, limit = 20, searchBy = '', search = '', yearId = '') => {
     setLoading(true);
     setApiError('');
     try {

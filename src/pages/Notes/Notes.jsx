@@ -143,9 +143,9 @@ export default function Notes() {
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pagination, setPagination] = useState({ currentPage: 1, limit: 10, totalRecords: 0, totalPages: 1 });
+  const [pagination, setPagination] = useState({ currentPage: 1, limit: 20, totalRecords: 0, totalPages: 1 });
 
   const [showCreate, setShowCreate] = useState(false);
   const [editNote, setEditNote] = useState(null);

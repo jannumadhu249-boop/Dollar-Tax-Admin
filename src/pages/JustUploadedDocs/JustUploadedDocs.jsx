@@ -206,7 +206,7 @@ export default function JustUploadedDocs({ selectedYear, setSelectedYear }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMember, setSelectedMember] = useState(null);
   const [clients, setClients] = useState([]);
-  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalRecords: 0, limit: 10 });
+  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalRecords: 0, limit: 20 });
   const [counts, setCounts] = useState({ totalMembers: 0, totalDocuments: 0 });
   const [years, setYears] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -248,7 +248,7 @@ export default function JustUploadedDocs({ selectedYear, setSelectedYear }) {
   };
 
   // ---- Fetch Uploaded Docs Members ----
-  const fetchClients = async (page = 1, limit = 10, search = '', yearId = '') => {
+  const fetchClients = async (page = 1, limit = 20, search = '', yearId = '') => {
     setLoading(true);
     setApiError('');
     try {

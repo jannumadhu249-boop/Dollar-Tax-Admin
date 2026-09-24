@@ -106,7 +106,7 @@ export default function Leads() {
   /* ── Pagination / Filtering state ── */
   const [searchTerm, setSearchTerm]   = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [perPage, setPerPage]         = useState(10);
+  const [perPage, setPerPage]         = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [dateFilter, setDateFilter]   = useState({ from: '', to: '' });

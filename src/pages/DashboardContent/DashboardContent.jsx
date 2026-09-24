@@ -76,7 +76,7 @@ export default function DashboardContent() {
   // ── API pagination state ──
   const [pagination, setPagination] = useState({
     currentPage: 1,
-    limit: 10,
+    limit: 20,
     totalRecords: 0,
     totalPages: 0,
   });
@@ -87,7 +87,7 @@ export default function DashboardContent() {
   const [statusFilter, setStatusFilter] = useState('');
 
   // ── Fetch with server-side pagination ──
-  const fetchList = async (page = 1, limit = 10, search = '', fileStatus = '', status = '') => {
+  const fetchList = async (page = 1, limit = 20, search = '', fileStatus = '', status = '') => {
     setLoading(true);
     try {
       const res = await fetch(URLS.GetDashboardContent, {

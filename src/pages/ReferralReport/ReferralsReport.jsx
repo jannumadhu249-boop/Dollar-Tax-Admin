@@ -17,11 +17,11 @@ export default function ReferralsReport({ selectedYear, setSelectedYear }) {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
-  const limit = 10;
+  const limit = 20;
 
   // ---------- Data states ----------
   const [referralsData, setReferralsData] = useState([]);
-  const [pagination, setPagination] = useState({ currentPage: 1, limit: 10, totalRecords: 0, totalPages: 0 });
+  const [pagination, setPagination] = useState({ currentPage: 1, limit: 20, totalRecords: 0, totalPages: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeYearId, setActiveYearId] = useState('');

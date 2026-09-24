@@ -15,7 +15,7 @@ const formatDate = (dateString) => {
   return `${month}/${day}/${year}`;
 };
 
-// DateTime formatting utility - MM/DD/YYYY HH:MM:SS
+// DateTime formatting utility - MM/DD/YYYY HH:MM
 const formatDateTime = (dateString) => {
   if (!dateString) return '—';
   const date = new Date(dateString);
@@ -25,8 +25,7 @@ const formatDateTime = (dateString) => {
   const year = date.getFullYear();
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
-  const seconds = String(date.getSeconds()).padStart(2, '0');
-  return `${month}/${day}/${year} ${hours}:${minutes}:${seconds}`;
+  return `${month}/${day}/${year} ${hours}:${minutes}`;
 };
 
 const getAuthToken = () => {
@@ -2701,7 +2700,7 @@ export default function MemberTableLayout({
   const [apiMembers, setApiMembers] = useState([]);
   const [isApiLoaded, setIsApiLoaded] = useState(false);
   const [counts, setCounts] = useState({});
-  const [pagination, setPagination] = useState({ currentPage: 1, limit: 10, totalRecords: 0, totalPages: 1 });
+  const [pagination, setPagination] = useState({ currentPage: 1, limit: 20, totalRecords: 0, totalPages: 1 });
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState('');
   const [activeYearId, setActiveYearId] = useState('');
@@ -2780,7 +2779,7 @@ export default function MemberTableLayout({
 
       const payload = {
         page: pagination.currentPage,
-        limit: 10,
+        limit: 20,
         search: searchTerm || "",
         year_id: activeYearId,
         filestatus: statusCode === 'all' || !statusCode ? 'all' : statusCode,

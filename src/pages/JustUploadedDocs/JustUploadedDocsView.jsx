@@ -693,7 +693,7 @@ export default function JustUploadedDocsView({
       const token = getAuthToken();
       const payload = {
         page: 1,
-        limit: 10,
+        limit: 20,
         search: '',
         year_id: ''
       };

@@ -26,7 +26,7 @@ export default function ClientStage() {
   // Pagination state
   const [pagination, setPagination] = useState({
     currentPage: 1,
-    limit: 10,
+    limit: 20,
     totalRecords: 0,
     totalPages: 1,
   });

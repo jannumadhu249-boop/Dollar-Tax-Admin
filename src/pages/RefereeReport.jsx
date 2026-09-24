@@ -21,11 +21,11 @@ export default function RefereeReport() {
   const [selectedYear, setSelectedYear] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
-  const limit = 10;
+  const limit = 20;
 
   // ---------- Data states ----------
   const [referees, setReferees] = useState([]);
-  const [pagination, setPagination] = useState({ currentPage: 1, limit: 10, totalRecords: 0, totalPages: 0 });
+  const [pagination, setPagination] = useState({ currentPage: 1, limit: 20, totalRecords: 0, totalPages: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -131,7 +131,7 @@ export default function RefereeReport() {
           createdAt: item.createdAt || ''
         }));
         setReferees(mapped);
-        setPagination(result.pagination || { currentPage: 1, limit: 10, totalRecords: 0, totalPages: 0 });
+        setPagination(result.pagination || { currentPage: 1, limit: 20, totalRecords: 0, totalPages: 0 });
       } else {
         setError(result.message || 'Failed to fetch referee report.');
       }
