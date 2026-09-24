@@ -207,8 +207,8 @@ export const getMemberDetails = (member) => {
 
 export const WORKFLOW_STATUSES = [
   'Registered Users',
-  'Scheduling Pending',
   'Information Pending',
+  'Scheduling Pending',
   'Interview Pending',
   'Documents Pending',
   'Preparation - 1',

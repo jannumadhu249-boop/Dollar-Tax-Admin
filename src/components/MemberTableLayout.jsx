@@ -4,6 +4,31 @@ import { getMemberDetails, WORKFLOW_STATUSES, INITIAL_COMMENTS, INITIAL_MEMBERS 
 import { URLS } from '../url';
 import * as XLSX from 'xlsx';
 
+// Date formatting utility - MM/DD/YYYY
+const formatDate = (dateString) => {
+  if (!dateString) return '—';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '—';
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${month}/${day}/${year}`;
+};
+
+// DateTime formatting utility - MM/DD/YYYY HH:MM:SS
+const formatDateTime = (dateString) => {
+  if (!dateString) return '—';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '—';
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${month}/${day}/${year} ${hours}:${minutes}:${seconds}`;
+};
+
 const getAuthToken = () => {
   const keys = ['authToken', 'token', 'adminToken', 'accessToken', 'jwt'];
   for (const key of keys) {
@@ -16,9 +41,9 @@ const getAuthToken = () => {
 /* ─── Reverse map: backend filestatus code → WORKFLOW_STATUSES display name ─── */
 const CODE_TO_DISPLAY = {
   'RGO':     'Registered Users',
-  'SP':      'Scheduling Pending',
   'BIP':     'Information Pending',
-  'IP':      'Interview Pending',
+  'SP':      'Scheduling Pending',
+  'IP':      'Interview Pending', 
   'DP':      'Documents Pending',
   'PP_I':    'Preparation - 1',
   'PP_II':   'Preparation - 2',
@@ -851,8 +876,8 @@ const handleDeleteDoc = async (docId) => {
   // Status name to code mapping
   const STATUS_CODE_MAP = {
     'Registered Users': 'RGO',
-    'Scheduling Pending': 'SP',
-    'Information Pending': 'BIP',
+    'Basic Information Pending': 'BIP',
+    'Schedule Pending': 'SP',
     'Interview Pending': 'IP',
     'Documents Pending': 'DP',
 
@@ -893,8 +918,8 @@ const handleDeleteDoc = async (docId) => {
 
     // Direct code identity mappings
     'RGO': 'RGO',
-    'SP': 'SP',
     'BIP': 'BIP',
+    'SP': 'SP',
     'IP': 'IP',
     'DP': 'DP',
     'PP_I': 'PP_I',
@@ -1309,7 +1334,7 @@ const handleDeleteDoc = async (docId) => {
                         { label: 'ALTERNATE NUMBER', value: profileData?.personalInfo?.alternate_number || member.raw?.alter_number || '—', masked: true, requiresOtp: true, isPhone: true, isContact: true, key: `${member._id || member.sNo}_alter_phone` },
                         { label: 'TIME ZONE', value: profileData?.personalInfo?.timezone || member.raw?.time_zone || '—' },
                         { label: 'SSN / TIN TYPE', value: profileData?.personalInfo?.ssn_tin || '—' },
-                        { label: 'DATE OF BIRTH', value: profileData?.personalInfo?.date_of_birth ? new Date(profileData.personalInfo.date_of_birth).toLocaleDateString() : '—' },
+                        { label: 'DATE OF BIRTH', value: formatDate(profileData?.personalInfo?.date_of_birth) },
                         { label: 'OCCUPATION', value: profileData?.personalInfo?.occupation || '—' },
                         { label: 'GENDER', value: profileData?.personalInfo?.gender || '—' },
                         { label: 'VISA TYPE', value: profileData?.personalInfo?.visa_type || '—' },
@@ -1319,13 +1344,13 @@ const handleDeleteDoc = async (docId) => {
                         { label: 'STATE', value: profileData?.personalInfo?.state || '—' },
                         { label: 'ZIPCODE', value: profileData?.personalInfo?.zipcode || '—' },
                         { label: 'FILING TYPE', value: profileData?.personalInfo?.filing_type || '—' },
-                        { label: 'DATE OF MARRIAGE', value: profileData?.personalInfo?.date_of_marriage ? new Date(profileData.personalInfo.date_of_marriage).toLocaleDateString() : '—' },
+                        { label: 'DATE OF MARRIAGE', value: formatDate(profileData?.personalInfo?.date_of_marriage) },
                         { label: 'REFERED EMAIL', value: profileData?.personalInfo?.refer_email },
                         { label: 'REFERED NAME', value: profileData?.personalInfo?.refer_full_name },
                         { label: 'FILING STATUS', value: profileData?.personalInfo?.filing_status || member.raw?.filestatus || member.status || '—' },
-                        { label: 'FIRST ENTRY DATE INTO USA', value: profileData?.personalInfo?.first_entry_date_into_usa ? new Date(profileData.personalInfo.first_entry_date_into_usa).toLocaleDateString() : '—' },
-                        { label: 'REGISTRATION DATE', value: member.raw?.date_created ? new Date(member.raw.date_created).toLocaleString() : member.regDate || '—' },
-                        { label: 'LAST UPDATED', value: member.raw?.date_updated ? new Date(member.raw.date_updated).toLocaleString() : member.statusDate || '—' },
+                        { label: 'FIRST ENTRY DATE INTO USA', value: formatDate(profileData?.personalInfo?.first_entry_date_into_usa) },
+                        { label: 'REGISTRATION DATE', value: formatDateTime(member.raw?.date_created) || member.regDate || '—' },
+                        { label: 'LAST UPDATED', value: formatDateTime(member.raw?.date_updated) || member.statusDate || '—' },
                       ].map((row, i) =>
                         row.masked ? (
                           <tr key={row.key}>

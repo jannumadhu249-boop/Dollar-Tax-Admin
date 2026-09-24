@@ -56,6 +56,10 @@ export default function RefereeReport() {
   const [success, setSuccess] = useState('');
   const refs = Array.from({ length: 6 }, () => useRef());
 
+  // ---------- Today's Follow-ups Popup ----------
+  const [todaysFollowupsPopup, setTodaysFollowupsPopup] = useState(false);
+  const [todaysFollowups, setTodaysFollowups] = useState([]);
+
   // ---------- Fetch years ----------
   const fetchYears = async () => {
     setYearsLoading(true);
@@ -376,6 +380,32 @@ export default function RefereeReport() {
       setPage(1);
     }
   }, [searchTerm, selectedStatus, selectedYear]);
+
+  // Check for today's follow-ups
+  useEffect(() => {
+    if (!loading && referees.length > 0) {
+      const today = new Date().toISOString().split('T')[0];
+      console.log('🔍 Checking for today\'s follow-ups:', { today, totalReferees: referees.length });
+      
+      const todaysList = referees.filter(ref => {
+        const followUpDate = ref.followUpDate ? ref.followUpDate.split('T')[0] : '';
+        console.log('📅 Referee:', ref.name, 'Follow-up:', followUpDate, 'Today:', today, 'Match:', followUpDate === today, 'Status:', ref.status);
+        return followUpDate === today && ref.status !== 'Completed';
+      });
+      
+      console.log('✅ Today\'s follow-ups found:', todaysList.length);
+      
+      if (todaysList.length > 0) {
+        console.log('🎉 Showing popup with', todaysList.length, 'follow-ups');
+        setTodaysFollowups(todaysList);
+        setTodaysFollowupsPopup(true);
+      } else {
+        console.log('ℹ️ No follow-ups for today');
+      }
+    } else {
+      console.log('⏳ Waiting for data:', { loading, refereesCount: referees.length });
+    }
+  }, [loading, referees]);
 
   // Timer for OTP
   useEffect(() => {
@@ -809,6 +839,88 @@ export default function RefereeReport() {
               >
                 {isSaving ? <Loader2 size={16} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} /> : null}
                 {isSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========== TODAY'S FOLLOW-UPS POPUP ========== */}
+      {todaysFollowupsPopup && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px' }}>
+          <div style={{ background: '#fff', borderRadius: '14px', width: '100%', maxWidth: '600px', boxShadow: '0 25px 50px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+            <div style={{ background: 'linear-gradient(135deg, #0076a3, #005f8a)', padding: '18px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: '8px', padding: '8px', display: 'flex' }}>
+                  <CheckCircle size={20} color="#fff" />
+                </div>
+                <div>
+                  <p style={{ color: '#fff', fontWeight: '700', fontSize: '16px', margin: 0 }}>Today's Follow-ups</p>
+                  <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px', margin: 0 }}>
+                    {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setTodaysFollowupsPopup(false)} type="button" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', opacity: 0.85, padding: '4px' }}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div style={{ padding: '20px', maxHeight: '400px', overflowY: 'auto' }}>
+              <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
+                You have {todaysFollowups.length} follow-up{todaysFollowups.length !== 1 ? 's' : ''} scheduled for today:
+              </p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {todaysFollowups.map((ref, idx) => (
+                  <div key={ref._id || idx} style={{ 
+                    padding: '14px', 
+                    background: '#f8fafc', 
+                    border: '1px solid #e2e8f0', 
+                    borderRadius: '8px',
+                    borderLeft: `4px solid ${ref.status === 'Completed' ? '#28a745' : '#ffc107'}`
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '8px' }}>
+                      <div style={{ fontWeight: '600', fontSize: '14px', color: '#0f172a' }}>
+                        {ref.name || 'No Name'}
+                      </div>
+                      <span style={{
+                        padding: '3px 8px',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        backgroundColor: ref.status === 'Completed' ? 'rgba(40,167,69,0.15)' : 'rgba(255,193,7,0.15)',
+                        color: ref.status === 'Completed' ? '#28a745' : '#ffc107'
+                      }}>
+                        {ref.status || 'Pending'}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#475569', lineHeight: '1.5' }}>
+                      {ref.description || 'No details provided'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px' }}>
+                      Contact: {ref.mobile}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ padding: '12px 20px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setTodaysFollowupsPopup(false)} 
+                style={{ 
+                  padding: '8px 20px', 
+                  border: 'none', 
+                  borderRadius: '6px', 
+                  background: '#0076a3', 
+                  color: '#fff', 
+                  fontSize: '13px', 
+                  fontWeight: '600', 
+                  cursor: 'pointer' 
+                }}
+              >
+                Got it!
               </button>
             </div>
           </div>

@@ -152,9 +152,33 @@ export default function Notes() {
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   const [toast, setToast] = useState(null);
+  
+  // Today's notes popup
+  const [todaysNotesPopup, setTodaysNotesPopup] = useState(false);
+  const [todaysNotes, setTodaysNotes] = useState([]);
 
   const showToast = (message, type = 'success') => setToast({ message, type });
   const hideToast = useCallback(() => setToast(null), []);
+  
+  // Check for today's notes on component mount
+  useEffect(() => {
+    const checkTodaysNotes = () => {
+      const today = new Date().toISOString().split('T')[0];
+      const todayNotesList = notes.filter(note => {
+        const noteDate = note.date ? note.date.split('T')[0] : '';
+        return noteDate === today;
+      });
+      
+      if (todayNotesList.length > 0) {
+        setTodaysNotes(todayNotesList);
+        setTodaysNotesPopup(true);
+      }
+    };
+    
+    if (!loading && notes.length > 0) {
+      checkTodaysNotes();
+    }
+  }, [loading, notes]);
 
   /* ─── Fetch from API ─── */
   const loadNotes = useCallback(async (page, limit, search) => {
@@ -474,6 +498,90 @@ export default function Notes() {
         onConfirm={handleDeleteConfirm}
         noteText={deleteTarget?.notes}
       />
+      
+      {/* Today's Notes Popup */}
+      {todaysNotesPopup && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px' }}>
+          <div style={{ background: '#fff', borderRadius: '14px', width: '100%', maxWidth: '600px', boxShadow: '0 25px 50px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+            {/* Header */}
+            <div style={{ background: 'linear-gradient(135deg, #0076a3, #005f8a)', padding: '18px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: '8px', padding: '8px', display: 'flex' }}>
+                  <CheckCircle2 size={20} color="#fff" />
+                </div>
+                <div>
+                  <p style={{ color: '#fff', fontWeight: '700', fontSize: '16px', margin: 0 }}>
+                    Today's Notes
+                  </p>
+                  <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px', margin: 0 }}>
+                    {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setTodaysNotesPopup(false)} type="button" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', opacity: 0.85, padding: '4px' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '20px', maxHeight: '400px', overflowY: 'auto' }}>
+              <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
+                You have {todaysNotes.length} note{todaysNotes.length !== 1 ? 's' : ''} scheduled for today:
+              </p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {todaysNotes.map((note, idx) => (
+                  <div key={note._id || idx} style={{ 
+                    padding: '14px', 
+                    background: '#f8fafc', 
+                    border: '1px solid #e2e8f0', 
+                    borderRadius: '8px',
+                    borderLeft: `4px solid ${note.status === 'Solved' ? '#28a745' : '#ffc107'}`
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '8px' }}>
+                      <div style={{ fontWeight: '600', fontSize: '14px', color: '#0f172a' }}>
+                        {note.employee_name || 'No Employee Name'}
+                      </div>
+                      <span style={{
+                        padding: '3px 8px',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        backgroundColor: note.status === 'Solved' ? 'rgba(40,167,69,0.15)' : 'rgba(255,193,7,0.15)',
+                        color: note.status === 'Solved' ? '#28a745' : '#ffc107'
+                      }}>
+                        {note.status || 'Pending'}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#475569', lineHeight: '1.5' }}>
+                      {note.notes || 'No details provided'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '12px 20px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setTodaysNotesPopup(false)} 
+                style={{ 
+                  padding: '8px 20px', 
+                  border: 'none', 
+                  borderRadius: '6px', 
+                  background: '#0076a3', 
+                  color: '#fff', 
+                  fontSize: '13px', 
+                  fontWeight: '600', 
+                  cursor: 'pointer' 
+                }}
+              >
+                Got it!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+}

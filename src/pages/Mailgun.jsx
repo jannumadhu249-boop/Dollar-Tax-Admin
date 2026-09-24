@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import logoLogin from '../assets/logo-login.png';
 
 /* ─────────────────────────────────────────────────────────────
    CKEditor 4 wrapper component
@@ -13,7 +14,7 @@ const EMAIL_TEMPLATE = `
   <tbody>
     <tr>
       <td colspan="2" style="background:#fff;border:1px solid #ccc;padding:6px 12px;font-size:12px;color:#333;">
-        contact@dollartaxfiler.com &nbsp;
+        contact@minimumtax.com &nbsp;
         <span style="color:#2a7a2a;font-weight:600;">&#127470;&#127475; +91 8466077444</span>
         &nbsp;&nbsp;
         <span style="color:#b22222;font-weight:600;">&#127482;&#127480; +1 970 370 7008 / +1 616 420 9090</span>
@@ -23,13 +24,7 @@ const EMAIL_TEMPLATE = `
       <td style="padding:8px 12px;border:1px solid #ccc;width:55%;">
         <table cellpadding="0" cellspacing="0"><tbody><tr>
           <td>
-            <div style="width:38px;height:38px;background:#c0392b;border-radius:3px;display:inline-block;vertical-align:middle;margin-right:8px;text-align:center;line-height:38px;">
-              <span style="color:#fff;font-size:20px;">&#9670;</span>
-            </div>
-          </td>
-          <td style="vertical-align:middle;">
-            <div style="font-weight:800;font-size:15px;color:#0a6e9e;line-height:1.1;">Dollar Tax Filer</div>
-            <div style="font-size:9px;color:#666;letter-spacing:0.3px;">Total Tax Solutions For Your Business</div>
+            <img src="${logoLogin}" alt="Dollar Tax Filer" style="width:120px;height:auto;display:block;" />
           </td>
         </tr></tbody></table>
       </td>
@@ -41,7 +36,7 @@ const EMAIL_TEMPLATE = `
     </tr>
     <tr>
       <td colspan="2" style="border:1px solid #ccc;padding:14px 16px;background:#fff;font-size:13px;color:#222;min-height:60px;">
-        <p><strong>Greetings from Dollartaxfiler!!</strong></p>
+        <p><strong>Greetings from Minimum Tax!!</strong></p>
         <p>&nbsp;</p>
       </td>
     </tr>
