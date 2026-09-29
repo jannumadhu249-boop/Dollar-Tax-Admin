@@ -126,6 +126,32 @@ const ROUTE_MAP = {
   'staff': '/settings/staff',
 };
 
+const TOP_LEVEL_TABS = [
+  'client-stage',
+  'referee',
+  'client-search',
+  'referrals',
+  'payments',
+  'm-note',
+  'estimator',
+  'pipeline',
+  'documents',
+];
+
+const getInitialRoute = () => {
+  if (typeof window === 'undefined') return { tab: 'members', status: 'all-registered' };
+  const path = window.location.pathname;
+  const topTab = TOP_LEVEL_TABS.find(tab => path === `/${tab}`);
+  if (topTab) {
+    return { tab: topTab, status: 'all-registered' };
+  }
+  const foundKey = Object.keys(ROUTE_MAP).find(k => ROUTE_MAP[k] === path);
+  if (foundKey) {
+    return { tab: 'members', status: foundKey };
+  }
+  return { tab: 'members', status: 'all-registered' };
+};
+
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     return sessionStorage.getItem('isLoggedIn') === 'true';
@@ -159,13 +185,13 @@ export default function App() {
     }
   }, [isLoggedIn]);
 
-  const [activeTab, setActiveTab] = useState('members');
+  const [activeTab, setActiveTab] = useState(() => getInitialRoute().tab);
   const [selectedYear, setSelectedYear] = useState('');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
-  // Default on login: All Registered
-  const [selectedStatus, setSelectedStatus] = useState('all-registered');
+  // Default on login: All Registered (or path-matched member status)
+  const [selectedStatus, setSelectedStatus] = useState(() => getInitialRoute().status);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // URL Path Sync (removed hash-based routing)
@@ -174,6 +200,15 @@ export default function App() {
 
     const updateFromPath = () => {
       const path = window.location.pathname;
+
+      // 1. Check top-level non-member tabs (e.g. /referee, /client-stage, etc.)
+      const topTab = TOP_LEVEL_TABS.find(tab => path === `/${tab}`);
+      if (topTab) {
+        setActiveTab(topTab);
+        return;
+      }
+
+      // 2. Check member routes
       const foundKey = Object.keys(ROUTE_MAP).find(k => ROUTE_MAP[k] === path);
       if (foundKey) {
         setSelectedStatus(foundKey);
@@ -181,6 +216,7 @@ export default function App() {
       } else if (!path || path === '/') {
         window.history.pushState(null, '', '/all-registered');
         setSelectedStatus('all-registered');
+        setActiveTab('members');
       }
     };
 

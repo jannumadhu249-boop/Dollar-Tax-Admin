@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { Eye, Shield, X, CheckCircle, Clock, RefreshCw, Loader2, RotateCcw, Calendar } from 'lucide-react';
+import { formatDate } from '../../utils/dateUtils';
 
 const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
@@ -353,13 +354,7 @@ export default function ReferralsReportView({
                                 <td style={{ padding: '12px', color: '#334155' }}>{member.mobile}</td>
                                 <td style={{ padding: '12px', color: '#334155' }}>{member.year}</td>
                                 <td style={{ padding: '12px', color: '#334155' }}>
-                                  {member.createdAt && member.createdAt !== '—'
-                                    ? new Date(member.createdAt).toLocaleDateString(undefined, {
-                                        year: 'numeric',
-                                        month: 'short',
-                                        day: 'numeric'
-                                      })
-                                    : '—'}
+                                  {formatDate(member.createdAt)}
                                 </td>
                                 <td style={{ padding: '12px', color: '#334155' }}>${member.amount}</td>
                               </tr>

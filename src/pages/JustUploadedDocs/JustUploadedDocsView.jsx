@@ -6,6 +6,7 @@ import {
   RefreshCw, CheckCircle, X, Trash2, FileText, Shield
 } from 'lucide-react';
 import { URLS } from '../../url';
+import { formatDate } from '../../utils/dateUtils';
 
 const getAuthToken = () => {
   const keys = ['authToken', 'token', 'adminToken', 'accessToken', 'jwt'];
@@ -1259,7 +1260,7 @@ export default function JustUploadedDocsView({
                   { label: 'ALTERNATE NUMBER', value: profileData?.personalInfo?.alternate_number || member?.alter_number, masked: true, key: `${memberId}_alter_contact`, isContact: true },
                   { label: 'TIME ZONE', value: profileData?.personalInfo?.time_zone || profileData?.personalInfo?.timezone || member?.time_zone },
                   { label: 'SSN / TIN TYPE', value: (profileData?.personalInfo?.ssn_tin ? `${profileData.personalInfo.tin_type || 'SSN'}: ${profileData.personalInfo.ssn_tin}` : (profileData?.personalInfo?.tin_type || member?.tin_type)) },
-                  { label: 'DATE OF BIRTH', value: profileData?.personalInfo?.date_of_birth ? new Date(profileData.personalInfo.date_of_birth).toLocaleDateString() : '—' },
+                  { label: 'DATE OF BIRTH', value: profileData?.personalInfo?.date_of_birth ? formatDate(profileData.personalInfo.date_of_birth) : '—' },
                   { label: 'OCCUPATION', value: profileData?.personalInfo?.occupation || '—' },
                   { label: 'GENDER', value: profileData?.personalInfo?.gender || '—' },
                   { label: 'VISA TYPE', value: profileData?.personalInfo?.visa_type || '—' },
@@ -1270,9 +1271,9 @@ export default function JustUploadedDocsView({
                   { label: 'ZIPCODE', value: profileData?.personalInfo?.zipcode || '—' },
                   { label: 'FILING STATUS', value: profileData?.personalInfo?.filing_status || member?.file_status_name || member?.filestatus_name },
                   { label: 'FILING TYPE', value: profileData?.personalInfo?.filing_type || member?.filing_type || member?.file_type || '—' },
-                  { label: 'DATE OF MARRIAGE', value: profileData?.personalInfo?.date_of_marriage ? new Date(profileData.personalInfo.date_of_marriage).toLocaleDateString() : (profileData?.personalInfo?.date_of_marriage || '—') },
-                  { label: 'FIRST ENTRY DATE INTO USA', value: profileData?.personalInfo?.first_entry_date_into_usa ? new Date(profileData.personalInfo.first_entry_date_into_usa).toLocaleDateString() : '—' },
-                  { label: 'REGISTRATION DATE', value: member?.date_created ? new Date(member.date_created).toLocaleString() : (member?.latestUpload ? new Date(member.latestUpload).toLocaleString() : '—') },
+                  { label: 'DATE OF MARRIAGE', value: profileData?.personalInfo?.date_of_marriage ? formatDate(profileData.personalInfo.date_of_marriage) : (profileData?.personalInfo?.date_of_marriage || '—') },
+                  { label: 'FIRST ENTRY DATE INTO USA', value: profileData?.personalInfo?.first_entry_date_into_usa ? formatDate(profileData.personalInfo.first_entry_date_into_usa) : '—' },
+                  { label: 'REGISTRATION DATE', value: member?.date_created ? formatDate(member.date_created) : (member?.latestUpload ? formatDate(member.latestUpload) : '—') },
                 ].map((row, i) => {
                   const isMasked = row.masked;
                   const fieldKey = row.key || `field_${i}`;
@@ -1327,16 +1328,16 @@ export default function JustUploadedDocsView({
                     ['MIDDLE NAME', profileData.spouseInfo.middle_name],
                     ['LAST NAME', profileData.spouseInfo.last_name],
                     ['GENDER', profileData.spouseInfo.gender],
-                    ['DATE OF BIRTH', profileData.spouseInfo.date_of_birth ? new Date(profileData.spouseInfo.date_of_birth).toLocaleDateString() : ''],
+                    ['DATE OF BIRTH', profileData.spouseInfo.date_of_birth ? formatDate(profileData.spouseInfo.date_of_birth, '') : ''],
                     ['OCCUPATION', profileData.spouseInfo.occupation],
                     ['VISA TYPE', profileData.spouseInfo.visa_type],
                     ['TAX ID TYPE', profileData.spouseInfo.tax_id_type],
                     ['SSN / ITIN', profileData.spouseInfo.ssn_itin || profileData.spouseInfo.ssn_tin],
                     ['PASSPORT NUMBER', profileData.spouseInfo.passport_number],
-                    ['PASSPORT EXPIRY DATE', profileData.spouseInfo.passport_expiry_date ? new Date(profileData.spouseInfo.passport_expiry_date).toLocaleDateString() : ''],
+                    ['PASSPORT EXPIRY DATE', profileData.spouseInfo.passport_expiry_date ? formatDate(profileData.spouseInfo.passport_expiry_date, '') : ''],
                     ['VISA NUMBER', profileData.spouseInfo.visa_number],
-                    ['VISA EXPIRY DATE', profileData.spouseInfo.visa_expiry_date ? new Date(profileData.spouseInfo.visa_expiry_date).toLocaleDateString() : ''],
-                    ['FIRST ENTRY DATE INTO USA', profileData.spouseInfo.first_entry_date_into_usa ? new Date(profileData.spouseInfo.first_entry_date_into_usa).toLocaleDateString() : ''],
+                    ['VISA EXPIRY DATE', profileData.spouseInfo.visa_expiry_date ? formatDate(profileData.spouseInfo.visa_expiry_date, '') : ''],
+                    ['FIRST ENTRY DATE INTO USA', profileData.spouseInfo.first_entry_date_into_usa ? formatDate(profileData.spouseInfo.first_entry_date_into_usa, '') : ''],
                   ].map(([l, v], i) => (
                     <tr key={i}>
                       <td style={{ width: '30%', fontWeight: '600', color: '#555', padding: '10px 10px', borderBottom: '1px solid #eee' }}>{l}</td>
@@ -1374,7 +1375,7 @@ export default function JustUploadedDocsView({
                           <td style={{ fontWeight: '600' }}>{`${dep.first_name || ''} ${dep.middle_name || ''} ${dep.last_name || ''}`.trim() || '—'}</td>
                           <td>{dep.gender || '—'}</td>
                           <td>{dep.relationship || '—'}</td>
-                          <td>{dep.date_of_birth ? new Date(dep.date_of_birth).toLocaleDateString() : '—'}</td>
+                          <td>{dep.date_of_birth ? formatDate(dep.date_of_birth) : '—'}</td>
                           <td>{dep.visa_type || '—'}</td>
                         </tr>
                       ))}
@@ -1462,9 +1463,9 @@ export default function JustUploadedDocsView({
                           <td style={{ fontWeight: '600' }}>{addr.person || 'Taxpayer'}</td>
                           <td>{addr.state?.name || addr.state || '—'}</td>
                           <td>{addr.year?.name || addr.year || '—'}</td>
-                          <td>{addr.address_from ? new Date(addr.address_from).toLocaleDateString() : '—'}</td>
-                          <td>{addr.address_to ? new Date(addr.address_to).toLocaleDateString() : '—'}</td>
-                          <td style={{ fontSize: '12px', color: '#64748b' }}>{addr.createdAt ? new Date(addr.createdAt).toLocaleString() : '—'}</td>
+                          <td>{addr.address_from ? formatDate(addr.address_from) : '—'}</td>
+                          <td>{addr.address_to ? formatDate(addr.address_to) : '—'}</td>
+                          <td style={{ fontSize: '12px', color: '#64748b' }}>{addr.createdAt ? formatDate(addr.createdAt) : '—'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1504,7 +1505,7 @@ export default function JustUploadedDocsView({
                           <td style={{ fontWeight: '600' }}>{doc.document_name || doc.original_name || doc.file_name || 'Document'}</td>
                           <td><span style={{ background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600' }}>{typeof doc.document_type === 'string' ? doc.document_type : (doc.document_type?.name || 'Tax Document')}</span></td>
                           <td style={{ fontSize: '12px', color: '#64748b' }}>{doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : '—'}</td>
-                          <td style={{ fontSize: '12px', color: '#64748b' }}>{doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : '—'}</td>
+                          <td style={{ fontSize: '12px', color: '#64748b' }}>{doc.createdAt ? formatDate(doc.createdAt) : '—'}</td>
                           <td style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                             <a href={doc.file_path ? (doc.file_path.startsWith('http') ? doc.file_path : `${URLS.ImageUrl}${doc.file_path}`) : '#'} target="_blank" rel="noopener noreferrer" style={{ padding: '5px 10px', fontSize: '12px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#0076a3', color: '#fff', borderRadius: '4px' }}>
                               <Download size={13} /> Download
@@ -1551,7 +1552,7 @@ export default function JustUploadedDocsView({
                         <tr key={item._id || idx}>
                           <td>{idx + 1}</td>
                           <td style={{ fontWeight: '600' }}>
-                            {item.consultation_date ? new Date(item.consultation_date).toLocaleDateString() : '—'}
+                            {item.consultation_date ? formatDate(item.consultation_date) : '—'}
                           </td>
                           <td>{typeof item.time_slot === 'string' ? item.time_slot : (item.time_slot?.slot || '—')}</td>
                           <td>
@@ -1560,7 +1561,7 @@ export default function JustUploadedDocsView({
                             </span>
                           </td>
                           <td style={{ fontSize: '12px', color: '#64748b' }}>
-                            {item.createdAt ? new Date(item.createdAt).toLocaleString() : '—'}
+                            {item.createdAt ? formatDate(item.createdAt) : '—'}
                           </td>
                         </tr>
                       ))}
@@ -1633,7 +1634,7 @@ export default function JustUploadedDocsView({
                             {p.status === 1 ? 'Paid' : 'Pending'}
                           </span>
                         </td>
-                        <td>{p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '—'}</td>
+                        <td>{p.createdAt ? formatDate(p.createdAt) : '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1747,7 +1748,7 @@ export default function JustUploadedDocsView({
                         const docName = doc.document_name || doc.original_name || doc.file_name || 'Document';
                         const fileName = doc.original_name || doc.file_name || '—';
                         const sizeStr = doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : '—';
-                        const uploadDate = doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : '—';
+                        const uploadDate = doc.createdAt ? formatDate(doc.createdAt) : '—';
                         return (
                           <tr key={doc._id || i}>
                             <td>{i + 1}</td>
@@ -1872,7 +1873,7 @@ export default function JustUploadedDocsView({
                           </td>
                           <td style={{ color: '#334155' }}>{c.comments || '—'}</td>
                           <td style={{ fontSize: '12px', color: '#64748b' }}>{c.createdBy || 'Admin'}</td>
-                          <td style={{ fontSize: '12px', color: '#64748b' }}>{c.createdAt ? new Date(c.createdAt).toLocaleString() : '—'}</td>
+                          <td style={{ fontSize: '12px', color: '#64748b' }}>{c.createdAt ? formatDate(c.createdAt) : '—'}</td>
                         </tr>
                       ))
                     ) : (

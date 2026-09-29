@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { formatDate } from '../utils/dateUtils';
 
 export default function CallbackRequests() {
   const [searchEmail, setSearchEmail] = useState('');
@@ -265,7 +266,7 @@ export default function CallbackRequests() {
                   </td>
                   <td>{req.mobile}</td>
                   <td style={{ whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{req.comments}</td>
-                  <td style={{ color: 'var(--text-muted)' }}>{req.dateCreated}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{req.dateCreated ? formatDate(req.dateCreated) : '—'}</td>
                 </tr>
               ))
             ) : (

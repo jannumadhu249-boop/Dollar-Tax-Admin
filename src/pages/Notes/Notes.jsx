@@ -3,6 +3,7 @@ import { Search, Edit3, Plus, ChevronLeft, ChevronRight, Trash2, AlertTriangle, 
 import CreateNoteModal from './CreateNoteModal';
 import EditNoteModal from './EditNoteModal';
 import { URLS } from '../../url';
+import { formatDate } from '../../utils/dateUtils';
 
 /* ─── Token helper ─── */
 const getToken = () => {
@@ -365,7 +366,7 @@ export default function Notes() {
               notes.map((n, idx) => (
                 <tr key={n._id}>
                   <td>{(currentPage - 1) * perPage + idx + 1}</td>
-                  <td>{n.date ? n.date.split('T')[0] : '—'}</td>
+                  <td>{n.date ? formatDate(n.date) : '—'}</td>
                   <td>{n.employee_name || '—'}</td>
                   <td>{n.notes || '—'}</td>
                   <td>

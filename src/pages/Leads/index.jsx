@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Eye, Edit2, Plus, Filter, ChevronLeft, ChevronRight, AlertTriangle, CheckCircle2, Users, Calendar } from 'lucide-react';
 import { URLS } from '../../url';
+import { formatDate } from '../../utils/dateUtils';
 import CreateLeadModal from './CreateLeadModal';
 import EditLeadModal from './EditLeadModal';
 import FilterModal from './FilterModal';
@@ -18,15 +19,6 @@ const getAuthToken = () => {
 };
 
 /* ─── Helpers ─── */
-const formatDate = (dateStr) => {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  if (isNaN(d)) return dateStr;
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = d.toLocaleString('en-US', { month: 'short' });
-  const year = d.getFullYear();
-  return `${day} ${month} ${year}`;
-};
 
 const statusColor = (s) => {
   const lower = (s || '').toLowerCase();

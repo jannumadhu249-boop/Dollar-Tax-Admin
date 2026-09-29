@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Eye, EyeOff, Shield, X, CheckCircle, Clock, RefreshCw, Loader2, Edit3 } from 'lucide-react';
 import { URLS } from '../url';
+import { formatDate } from '../utils/dateUtils';
 
 // ---------- Helper: get auth token ----------
 const getAuthToken = () => {
@@ -182,7 +183,7 @@ export default function RefereeReport() {
           item.amount,
           item.paid_amount,
           item.year,
-          item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''
+          item.createdAt ? formatDate(item.createdAt, '') : ''
         ]);
         const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -553,7 +554,7 @@ export default function RefereeReport() {
                           </button>
                         </div>
                       </td>
-                      <td style={{ padding: '10px 12px', color: '#64748b', borderRight: '1px solid #f1f5f9' }}>{r.followUpDate ? new Date(r.followUpDate).toLocaleDateString() : '—'}</td>
+                      <td style={{ padding: '10px 12px', color: '#64748b', borderRight: '1px solid #f1f5f9' }}>{r.followUpDate ? formatDate(r.followUpDate) : '—'}</td>
                       <td style={{ padding: '10px 12px', color: '#64748b', borderRight: '1px solid #f1f5f9' }}>{r.description || '—'}</td>
                       <td style={{ padding: '10px 12px', color: '#64748b', borderRight: '1px solid #f1f5f9' }}>
                         <span style={{
@@ -857,7 +858,7 @@ export default function RefereeReport() {
                 <div>
                   <p style={{ color: '#fff', fontWeight: '700', fontSize: '16px', margin: 0 }}>Today's Follow-ups</p>
                   <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px', margin: 0 }}>
-                    {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    {formatDate(new Date())}
                   </p>
                 </div>
               </div>

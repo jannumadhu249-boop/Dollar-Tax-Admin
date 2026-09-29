@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { URLS } from '../../url';
+import { formatDate } from '../../utils/dateUtils';
 
 // Helper to get auth token – adjust based on your app's storage
 const getAuthToken = () => {
@@ -238,7 +239,7 @@ export default function QueryList() {
                 const displayEmail = query.member?.email || '';
                 // Use message as comments
                 const comments = query.message || 'No comment';
-                const createdAt = new Date(query.createdAt).toLocaleString();
+                const createdAt = formatDate(query.createdAt);
 
                 return (
                   <tr key={query._id}>

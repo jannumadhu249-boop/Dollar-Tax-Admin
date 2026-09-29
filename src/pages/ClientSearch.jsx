@@ -8,6 +8,7 @@ import {
   Shield
 } from 'lucide-react';
 import { URLS } from '../url';
+import { formatDate } from '../utils/dateUtils';
 
 const getAuthToken = () => {
   const keys = ['authToken', 'token', 'adminToken', 'accessToken', 'jwt'];
@@ -1356,9 +1357,9 @@ const handleDeleteDoc = async (docId) => {
                       { label: 'STATE', value: profileData?.personalInfo?.state || '—' },
                       { label: 'ZIPCODE', value: profileData?.personalInfo?.zipcode || '—' },
                       { label: 'FILING STATUS', value: profileData?.personalInfo?.filing_status || selectedMember.filestatus_name },
-                      { label: 'FIRST ENTRY DATE INTO USA', value: profileData?.personalInfo?.first_entry_date_into_usa || '—' },
-                      { label: 'REGISTRATION DATE', value: selectedMember.date_created ? new Date(selectedMember.date_created).toLocaleString() : '—' },
-                      { label: 'LAST UPDATED', value: selectedMember.date_updated ? new Date(selectedMember.date_updated).toLocaleString() : '—' },
+                      { label: 'FIRST ENTRY DATE INTO USA', value: profileData?.personalInfo?.first_entry_date_into_usa ? formatDate(profileData.personalInfo.first_entry_date_into_usa) : '—' },
+                      { label: 'REGISTRATION DATE', value: selectedMember.date_created ? formatDate(selectedMember.date_created) : '—' },
+                      { label: 'LAST UPDATED', value: selectedMember.date_updated ? formatDate(selectedMember.date_updated) : '—' },
                     ].map((row, i) => {
                       const isMasked = row.masked;
                       const fieldKey = row.key || `field_${i}`;
@@ -1412,16 +1413,16 @@ const handleDeleteDoc = async (docId) => {
                         ['MIDDLE NAME', profileData.spouseInfo.middle_name],
                         ['LAST NAME', profileData.spouseInfo.last_name],
                         ['GENDER', profileData.spouseInfo.gender],
-                        ['DATE OF BIRTH', profileData.spouseInfo.date_of_birth ? new Date(profileData.spouseInfo.date_of_birth).toLocaleDateString() : ''],
+                        ['DATE OF BIRTH', profileData.spouseInfo.date_of_birth ? formatDate(profileData.spouseInfo.date_of_birth, '') : ''],
                         ['OCCUPATION', profileData.spouseInfo.occupation],
                         ['VISA TYPE', profileData.spouseInfo.visa_type],
                         ['TAX ID TYPE', profileData.spouseInfo.tax_id_type],
                         ['SSN / ITIN', profileData.spouseInfo.ssn_tin],
                         ['PASSPORT NUMBER', profileData.spouseInfo.passport_number],
-                        ['PASSPORT EXPIRY DATE', profileData.spouseInfo.passport_expiry_date ? new Date(profileData.spouseInfo.passport_expiry_date).toLocaleDateString() : ''],
+                        ['PASSPORT EXPIRY DATE', profileData.spouseInfo.passport_expiry_date ? formatDate(profileData.spouseInfo.passport_expiry_date, '') : ''],
                         ['VISA NUMBER', profileData.spouseInfo.visa_number],
-                        ['VISA EXPIRY DATE', profileData.spouseInfo.visa_expiry_date ? new Date(profileData.spouseInfo.visa_expiry_date).toLocaleDateString() : ''],
-                        ['FIRST ENTRY DATE INTO USA', profileData.spouseInfo.first_entry_date_into_usa ? new Date(profileData.spouseInfo.first_entry_date_into_usa).toLocaleDateString() : ''],
+                        ['VISA EXPIRY DATE', profileData.spouseInfo.visa_expiry_date ? formatDate(profileData.spouseInfo.visa_expiry_date, '') : ''],
+                        ['FIRST ENTRY DATE INTO USA', profileData.spouseInfo.first_entry_date_into_usa ? formatDate(profileData.spouseInfo.first_entry_date_into_usa, '') : ''],
                       ].map(([l, v], i) => (
                         <tr key={i}>
                           <td style={{ width: '30%', fontWeight: '600', color: '#555', padding: '10px 10px', borderBottom: '1px solid #eee' }}>{l}</td>
@@ -1459,7 +1460,7 @@ const handleDeleteDoc = async (docId) => {
                               <td style={{ fontWeight: '600' }}>{`${dep.first_name || ''} ${dep.middle_name || ''} ${dep.last_name || ''}`.trim() || '—'}</td>
                               <td>{dep.gender || '—'}</td>
                               <td>{dep.relationship || '—'}</td>
-                              <td>{dep.date_of_birth ? new Date(dep.date_of_birth).toLocaleDateString() : '—'}</td>
+                              <td>{dep.date_of_birth ? formatDate(dep.date_of_birth) : '—'}</td>
                               <td>{dep.visa_type || '—'}</td>
                             </tr>
                           ))}
@@ -1511,11 +1512,11 @@ const handleDeleteDoc = async (docId) => {
                           </td></tr>
                         {profileData.bankDetails.createdAt && (
                           <tr><td style={{ fontWeight: 'bold', width: '30%', color: '#555', padding: '10px 10px', borderBottom: '1px solid #eee' }}>Created At</td>
-                            <td style={{ padding: '10px 10px', borderBottom: '1px solid #eee', fontSize: '12px', color: '#64748b' }}>{new Date(profileData.bankDetails.createdAt).toLocaleString()}</td></tr>
+                            <td style={{ padding: '10px 10px', borderBottom: '1px solid #eee', fontSize: '12px', color: '#64748b' }}>{formatDate(profileData.bankDetails.createdAt)}</td></tr>
                         )}
                         {profileData.bankDetails.updatedAt && (
                           <tr><td style={{ fontWeight: 'bold', width: '30%', color: '#555', padding: '10px 10px', borderBottom: '1px solid #eee' }}>Updated At</td>
-                            <td style={{ padding: '10px 10px', borderBottom: '1px solid #eee', fontSize: '12px', color: '#64748b' }}>{new Date(profileData.bankDetails.updatedAt).toLocaleString()}</td></tr>
+                            <td style={{ padding: '10px 10px', borderBottom: '1px solid #eee', fontSize: '12px', color: '#64748b' }}>{formatDate(profileData.bankDetails.updatedAt)}</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -1553,9 +1554,9 @@ const handleDeleteDoc = async (docId) => {
                               <td style={{ fontWeight: '600' }}>{addr.person || 'Taxpayer'}</td>
                               <td>{addr.state?.name || '—'}</td>
                               <td>{addr.year?.name || '—'}</td>
-                              <td>{addr.address_from ? new Date(addr.address_from).toLocaleDateString() : '—'}</td>
-                              <td>{addr.address_to ? new Date(addr.address_to).toLocaleDateString() : '—'}</td>
-                              <td style={{ fontSize: '12px', color: '#64748b' }}>{addr.createdAt ? new Date(addr.createdAt).toLocaleString() : '—'}</td>
+                              <td>{addr.address_from ? formatDate(addr.address_from) : '—'}</td>
+                              <td>{addr.address_to ? formatDate(addr.address_to) : '—'}</td>
+                              <td style={{ fontSize: '12px', color: '#64748b' }}>{addr.createdAt ? formatDate(addr.createdAt) : '—'}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1592,7 +1593,7 @@ const handleDeleteDoc = async (docId) => {
                               <td style={{ fontWeight: '600' }}>{doc.document_name || doc.original_name || 'Document'}</td>
                               <td><span style={{ background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600' }}>{doc.document_type?.name || 'Tax Document'}</span></td>
                               <td style={{ fontSize: '12px', color: '#64748b' }}>{doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : '—'}</td>
-                              <td style={{ fontSize: '12px', color: '#64748b' }}>{doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : '—'}</td>
+                              <td style={{ fontSize: '12px', color: '#64748b' }}>{doc.createdAt ? formatDate(doc.createdAt) : '—'}</td>
                               <td>
                                 <a href={doc.file_path ? (doc.file_path.startsWith('http') ? doc.file_path : `${URLS.ImageUrl}${doc.file_path}`) : '#'} target="_blank" rel="noopener noreferrer" style={{ padding: '5px 12px', fontSize: '12px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#0076a3', color: '#fff', borderRadius: '4px' }}>
                                   <Download size={13} /> Download
@@ -1625,7 +1626,7 @@ const handleDeleteDoc = async (docId) => {
                     <table className="corporate-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                       <tbody>
                         <tr><td style={{ fontWeight: 'bold', width: '30%', color: '#555', padding: '10px 10px', borderBottom: '1px solid #eee' }}>Consultation Date</td>
-                          <td style={{ padding: '10px 10px', borderBottom: '1px solid #eee' }}>{profileData.interview.consultation_date ? new Date(profileData.interview.consultation_date).toLocaleDateString() : '—'}</td></tr>
+                          <td style={{ padding: '10px 10px', borderBottom: '1px solid #eee' }}>{profileData.interview.consultation_date ? formatDate(profileData.interview.consultation_date) : '—'}</td></tr>
                         <tr><td style={{ fontWeight: 'bold', width: '30%', color: '#555', padding: '10px 10px', borderBottom: '1px solid #eee' }}>Time Slot</td>
                           <td style={{ padding: '10px 10px', borderBottom: '1px solid #eee' }}>{profileData.interview.time_slot?.slot || '—'}</td></tr>
                         <tr><td style={{ fontWeight: 'bold', width: '30%', color: '#555', padding: '10px 10px', borderBottom: '1px solid #eee' }}>Interview Status</td>
@@ -1704,7 +1705,7 @@ const handleDeleteDoc = async (docId) => {
                                 {p.status === 1 ? 'Paid' : 'Pending'}
                               </span>
                             </td>
-                            <td>{p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '—'}</td>
+                            <td>{p.createdAt ? formatDate(p.createdAt) : '—'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1809,7 +1810,7 @@ const handleDeleteDoc = async (docId) => {
                         const docName = doc.document_name || doc.original_name || doc.file_name || 'Document';
                         const fileName = doc.original_name || doc.file_name || '—';
                         const sizeStr = doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : '—';
-                        const uploadDate = doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : '—';
+                        const uploadDate = doc.createdAt ? formatDate(doc.createdAt) : '—';
                         return (
                           <tr key={doc._id || i}>
                             <td>{i + 1}</td>
@@ -1931,7 +1932,7 @@ const handleDeleteDoc = async (docId) => {
                               </td>
                               <td style={{ color: '#334155' }}>{c.comments || '—'}</td>
                               <td style={{ fontSize: '12px', color: '#64748b' }}>{c.createdBy || 'Admin'}</td>
-                              <td style={{ fontSize: '12px', color: '#64748b' }}>{c.createdAt ? new Date(c.createdAt).toLocaleString() : '—'}</td>
+                              <td style={{ fontSize: '12px', color: '#64748b' }}>{c.createdAt ? formatDate(c.createdAt) : '—'}</td>
                             </tr>
                           ))
                         ) : (

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, Users, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { URLS } from '../../url';
+import { formatDate } from '../../utils/dateUtils';
 import StaffModal from './StaffModal';
 import './Staff.css';
 
@@ -200,10 +201,7 @@ const getRoleName = (member) => {
   return found ? (found.roleName || found.name) : member.role || '—';
 };
 
-  const formatDate = (d) => {
-    if (!d) return '—';
-    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-  };
+  // Uses imported formatDate for MM/DD/YYYY format
 
   return (
     <div className="st-page">

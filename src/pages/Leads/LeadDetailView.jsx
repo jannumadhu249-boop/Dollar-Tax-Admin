@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Plus, MessageSquare, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 import { URLS } from '../../url';
+import { formatDate } from '../../utils/dateUtils';
 
 /* ─── Token helper ─── */
 const getAuthToken = () => {
@@ -13,12 +14,6 @@ const getAuthToken = () => {
 };
 
 /* ─── Helpers ─── */
-const formatDate = (dateStr) => {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  if (isNaN(d)) return dateStr;
-  return d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
-};
 
 const statusColor = (s) => {
   const lower = (s || '').toLowerCase();
