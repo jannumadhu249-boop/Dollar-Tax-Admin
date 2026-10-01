@@ -118,7 +118,8 @@ export const URLS = {
 
     // Just Uploaded Docs
     GetJustUploadDocs : base_url + "v1/minimumTax/admin/justUploadedDocs/getAllUploadedDocuments",
-    ViewJustUploadDocs : base_url + "v1/minimumTax/admin/justUploadedDocs/getUploadedDocumentsByMember/",
+    ViewJustUploadDocs : base_url + "v1/minimumTax/admin/memberView/member/",
+    MarkDocumentViewed : base_url + "v1/minimumTax/admin/justUploadedDocs/markDocumentViewed",
 
     //Query Messages
     GetQueryMessages : base_url + "v1/minimumTax/admin/dashboard/getDashboardMessages",

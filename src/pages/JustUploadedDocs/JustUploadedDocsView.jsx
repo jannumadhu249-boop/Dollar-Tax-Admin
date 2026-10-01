@@ -686,42 +686,110 @@ export default function JustUploadedDocsView({
 
   const memberId = member?.member_id || member?._id;
 
+  // DEBUG: log member object to browser console to verify correct IDs
+  // Remove this after confirming member_id resolves correctly
+  React.useEffect(() => {
+    console.log('[JustUploadedDocsView] member prop:', member);
+    console.log('[JustUploadedDocsView] resolved memberId:', memberId);
+  }, [member]);
+
+  const markedDocIdsRef = useRef(new Set());
+
+  // ---- Mark Document as Viewed ----
+  const markDocumentsViewed = async (documents) => {
+    if (!Array.isArray(documents) || documents.length === 0) return;
+    const token = getAuthToken();
+    for (const doc of documents) {
+      const docId = typeof doc === 'string' ? doc : (doc._id || doc.id || doc.documentId || doc.document_id);
+      if (!docId) continue;
+      const strId = String(docId);
+      if (markedDocIdsRef.current.has(strId)) continue;
+      markedDocIdsRef.current.add(strId);
+
+      let primarySource = doc.source;
+      if (!primarySource) {
+        primarySource = (doc.uploaded_by === 'Admin' || doc.isAdminUploaded || doc.uploaded_by_admin) ? 'Admin' : 'User';
+      }
+
+      try {
+        const res = await fetch(URLS.MarkDocumentViewed, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ documentId: strId, source: primarySource })
+        });
+        if (res.status === 404) {
+          const fallbackSource = primarySource === 'Admin' ? 'User' : 'Admin';
+          await fetch(URLS.MarkDocumentViewed, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ documentId: strId, source: fallbackSource })
+          });
+        }
+      } catch (err) {
+        console.warn('markDocumentViewed error for doc', docId, err);
+      }
+    }
+  };
+
+  // Auto-mark uploaded documents as viewed as soon as member is received
+  useEffect(() => {
+    if (Array.isArray(member?.uploaded_documents) && member.uploaded_documents.length > 0) {
+      markDocumentsViewed(member.uploaded_documents);
+    }
+  }, [member]);
+
   // ---- Fetch Profile ----
   const fetchMemberProfile = async (mId) => {
     if (!mId) return;
     setLoadingProfile(true);
     try {
       const token = getAuthToken();
-      const payload = {
-        page: 1,
-        limit: 20,
-        search: '',
-        year_id: ''
-      };
-      const res = await fetch(`${URLS.ViewJustUploadDocs}${mId}`, {
+      const res = await fetch(`${URLS.GetMemberView}${mId}/profile`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const result = await res.json();
-      if (result.success && Array.isArray(result.data)) {
-        const parsed = parseMemberDetailsResponse(result.data);
-        setProfileData(parsed);
+      if (result.success && result.data) {
+        let processedData;
+        if (Array.isArray(result.data)) {
+          processedData = parseMemberDetailsResponse(result.data);
+        } else {
+          processedData = {
+            ...result.data,
+            documents: Array.isArray(result.data.documents)
+              ? result.data.documents.map(doc => ({
+                  ...doc,
+                  isAdminUploaded: doc.isAdminUploaded || doc.new_docs || doc.uploaded_by_admin || doc.admin_upload || false
+                }))
+              : (Array.isArray(member?.uploaded_documents) ? member.uploaded_documents : [])
+          };
+          if (!processedData.downloadDocuments) {
+            processedData.downloadDocuments = processedData.documents;
+          }
+        }
+        setProfileData(processedData);
 
-        // Sync file status from File Info section
-        const fi = parsed.fileInfo || {};
-        const matchedStatusName = fi.file_status_name || CODE_TO_STATUS_NAME[fi.file_status] || fi.file_status;
+        // Mark all uploaded documents as viewed by Admin
+        const uploadedDocs = processedData.uploadDetails?.documents || [];
+        const downloadDocs = processedData.downloadDocuments || processedData.documents || [];
+        const memberJustDocs = Array.isArray(member?.uploaded_documents) ? member.uploaded_documents : [];
+        const allDocs = [...uploadedDocs, ...downloadDocs, ...memberJustDocs];
+        if (allDocs.length > 0) {
+          markDocumentsViewed(allDocs);
+        }
+
+        // Sync file status from profileData if available
+        const fi = processedData.fileInfo || processedData.personalInfo || {};
+        const matchedStatusName = fi.file_status_name || fi.filestatus_name || CODE_TO_STATUS_NAME[fi.file_status] || fi.file_status || member?.file_status_name || member?.filestatus_name;
         if (matchedStatusName) {
           setStatusInput(matchedStatusName);
         }
-        if (fi.filing_type) {
-          setFileTypeInput(fi.filing_type);
+        if (fi.filing_type || member?.filing_type) {
+          setFileTypeInput(fi.filing_type || member?.filing_type);
         }
-      } else if (result.success && result.data && typeof result.data === 'object') {
-        setProfileData(result.data);
       }
     } catch (err) {
       console.error('Member profile fetch error:', err);
@@ -935,10 +1003,6 @@ export default function JustUploadedDocsView({
       setFileInfoErrorMsg('Member ID missing.');
       return;
     }
-    if (!commentsInput.trim()) {
-      setFileInfoErrorMsg('Please enter comments.');
-      return;
-    }
     setFileInfoErrorMsg('');
     setFileInfoSuccessMsg('');
     setIsSubmittingFileInfo(true);
@@ -946,7 +1010,7 @@ export default function JustUploadedDocsView({
     try {
       const token = getAuthToken();
       const statusCode = STATUS_CODE_MAP[statusInput] || statusInput;
-      const payload = { file_type: fileTypeInput, status: statusCode, comments: commentsInput.trim() };
+      const payload = { file_type: fileTypeInput, status: statusCode, comments: commentsInput.trim() || '' };
 
       const res = await fetch(`${URLS.CreateFileInfo}${memberId}`, {
         method: 'POST',
@@ -1749,6 +1813,9 @@ export default function JustUploadedDocsView({
                         const fileName = doc.original_name || doc.file_name || '—';
                         const sizeStr = doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : '—';
                         const uploadDate = doc.createdAt ? formatDate(doc.createdAt) : '—';
+                        const fileUrl = doc.file_path
+                          ? (doc.file_path.startsWith('http') ? doc.file_path : `${URLS.ImageUrl}${doc.file_path}`)
+                          : null;
                         return (
                           <tr key={doc._id || i}>
                             <td>{i + 1}</td>
@@ -1756,10 +1823,31 @@ export default function JustUploadedDocsView({
                             <td style={{ fontSize: '12px', color: '#475569' }}>{fileName}</td>
                             <td style={{ fontSize: '12px', color: '#64748b' }}>{sizeStr}</td>
                             <td style={{ fontSize: '12px', color: '#64748b' }}>{uploadDate}</td>
-                            <td>
+                            <td style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                              {/* View/Preview button */}
+                              {fileUrl ? (
+                                <a
+                                  href={fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="View Document"
+                                  style={{
+                                    padding: '4px 10px', fontSize: '12px', border: '1px solid #bae6fd',
+                                    background: '#e0f2fe', color: '#0369a1', borderRadius: '4px',
+                                    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                    fontWeight: '600', textDecoration: 'none'
+                                  }}
+                                >
+                                  <Eye size={13} />
+                                </a>
+                              ) : (
+                                <span style={{ fontSize: '11px', color: '#94a3b8' }}>No file</span>
+                              )}
+                              {/* Delete button */}
                               <button
                                 type="button"
                                 onClick={() => handleDeleteDoc(doc._id || i)}
+                                title="Delete Document"
                                 style={{
                                   padding: '4px 10px', fontSize: '12px', border: '1px solid #fecaca',
                                   background: '#fef2f2', color: '#dc2626', borderRadius: '4px',
@@ -1830,13 +1918,13 @@ export default function JustUploadedDocsView({
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '18px' }}>
-                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>Comments <span style={{ color: '#dc2626' }}>*</span></label>
-                <textarea rows="4" className="search-input-box" style={{ width: '100%', height: 'auto', fontFamily: 'inherit', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '13px' }} placeholder="Enter administrative workflow update comments..." value={commentsInput} onChange={e => setCommentsInput(e.target.value)} required />
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>Comments</label>
+                <textarea rows="4" className="search-input-box" style={{ width: '100%', height: 'auto', fontFamily: 'inherit', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '13px' }} placeholder="Enter administrative workflow update comments (optional)..." value={commentsInput} onChange={e => setCommentsInput(e.target.value)} />
               </div>
 
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <button type="button" className="btn btn-secondary" style={{ padding: '8px 20px', fontWeight: '600', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', background: '#fff', color: '#475569' }} onClick={() => { setCommentsInput(''); setFileInfoErrorMsg(''); }}>Reset</button>
-                <button type="submit" disabled={isSubmittingFileInfo || !commentsInput.trim()} style={{ background: '#0076a3', padding: '8px 22px', border: 'none', fontWeight: '600', color: '#fff', borderRadius: '6px', cursor: isSubmittingFileInfo || !commentsInput.trim() ? 'not-allowed' : 'pointer', opacity: isSubmittingFileInfo || !commentsInput.trim() ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button type="submit" disabled={isSubmittingFileInfo} style={{ background: '#0076a3', padding: '8px 22px', border: 'none', fontWeight: '600', color: '#fff', borderRadius: '6px', cursor: isSubmittingFileInfo ? 'not-allowed' : 'pointer', opacity: isSubmittingFileInfo ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {isSubmittingFileInfo ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : null}
                   {isSubmittingFileInfo ? 'Submitting...' : 'Submit Update'}
                 </button>

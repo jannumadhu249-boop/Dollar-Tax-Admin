@@ -125,6 +125,7 @@ export default function Sidebar({ selectedYear = '', currentFilter = 'all-regist
   };
 
   const [apiCounts, setApiCounts] = useState(null);
+  const [justUploadedCount, setJustUploadedCount] = useState(0);
 
   // --- Fetch live sidebar counts from API ---
   useEffect(() => {
@@ -166,6 +167,39 @@ export default function Sidebar({ selectedYear = '', currentFilter = 'all-regist
     return () => { isMounted = false; };
   }, [currentYearData, currentFilter]);
 
+  // --- Fetch Just Uploaded Docs count for sidebar badge ---
+  useEffect(() => {
+    let isMounted = true;
+    const fetchJustUploadedCount = async () => {
+      try {
+        const token = getAuthToken();
+        const res = await fetch(URLS.GetJustUploadDocs, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            page: 1,
+            limit: 1,
+            search: '',
+            year_id: currentYearData?._id || ''
+          })
+        });
+        if (res.ok) {
+          const result = await res.json();
+          if (isMounted && result.success && result.counts) {
+            setJustUploadedCount(result.counts.totalMembers || result.counts.totalDocuments || 0);
+          }
+        }
+      } catch (err) {
+        console.warn('Sidebar just-uploaded-docs count fetch error:', err);
+      }
+    };
+    fetchJustUploadedCount();
+    return () => { isMounted = false; };
+  }, [currentYearData]);
+
   const ROUTE_TO_CODE = {
     'all-registered': 'all',
     'registered-users': 'RGO',
@@ -198,11 +232,13 @@ export default function Sidebar({ selectedYear = '', currentFilter = 'all-regist
   };
 
   const getCount = (filterKey) => {
+    // Special case: Just Uploaded Docs uses its own dedicated fetch
+    if (filterKey === 'just-uploaded-docs') return justUploadedCount;
+
     const code = ROUTE_TO_CODE[filterKey];
     if (apiCounts && code && apiCounts[code] !== undefined) {
       return apiCounts[code];
     }
-    const preProc = ['Scheduling Pending', 'Information Pending', 'Interview Pending', 'Documents Pending'];
     switch (filterKey) {
       case 'all-registered': return INITIAL_MEMBERS.length;
       case 'registered-users': return INITIAL_MEMBERS.filter(m => m.status === 'Registered Users').length;
@@ -766,7 +802,7 @@ export default function Sidebar({ selectedYear = '', currentFilter = 'all-regist
               <PhoneCall size={16} className="menu-icon" />
               <span className="uppercase-label">CALL BACK REQUESTS</span>
             </div>
-            <span className="sidebar-badge">20</span>
+            <span className="sidebar-badge">{getCount('call-back-requests')}</span>
           </button>
         )}
 
@@ -780,7 +816,7 @@ export default function Sidebar({ selectedYear = '', currentFilter = 'all-regist
               <FileUp size={16} className="menu-icon" />
               <span className="uppercase-label">JUST UPLOADED DOCS</span>
             </div>
-            <span className="sidebar-badge">0</span>
+            <span className="sidebar-badge">{getCount('just-uploaded-docs')}</span>
           </button>
         )}
 

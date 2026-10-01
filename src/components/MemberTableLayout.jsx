@@ -2212,6 +2212,9 @@ const handleDeleteDoc = async (docId) => {
                         const fileName = doc.original_name || doc.file_name || '—';
                         const sizeStr = doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : '—';
                         const uploadDate = doc.createdAt ? formatDate(doc.createdAt) : '—';
+                        const fileUrl = doc.file_path
+                          ? (doc.file_path.startsWith('http') ? doc.file_path : `${URLS.ImageUrl}${doc.file_path}`)
+                          : null;
                         return (
                           <tr key={doc._id || i}>
                             <td>{i + 1}</td>
@@ -2219,7 +2222,27 @@ const handleDeleteDoc = async (docId) => {
                             <td style={{ fontSize: '12px', color: '#475569' }}>{fileName}</td>
                             <td style={{ fontSize: '12px', color: '#64748b' }}>{sizeStr}</td>
                             <td style={{ fontSize: '12px', color: '#64748b' }}>{uploadDate}</td>
-                            <td>
+                            <td style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                              {/* View/Preview button */}
+                              {fileUrl ? (
+                                <a
+                                  href={fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="View Document"
+                                  style={{
+                                    padding: '4px 10px', fontSize: '12px', border: '1px solid #bae6fd',
+                                    background: '#e0f2fe', color: '#0369a1', borderRadius: '4px',
+                                    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                    fontWeight: '600', textDecoration: 'none'
+                                  }}
+                                >
+                                  <Eye size={13} />
+                                </a>
+                              ) : (
+                                <span style={{ fontSize: '11px', color: '#94a3b8' }}>No file</span>
+                              )}
+                              {/* Delete button */}
                               <button
                                 type="button"
                                 onClick={() => handleDeleteDoc(doc._id || i)}

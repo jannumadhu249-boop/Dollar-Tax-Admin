@@ -816,10 +816,10 @@ export default function ClientSearch({ member, selectedYear, setSelectedYear }) 
       setFileInfoErrorMsg('Member ID missing.');
       return;
     }
-    if (!commentsInput.trim()) {
-      setFileInfoErrorMsg('Please enter comments.');
-      return;
-    }
+    // if (!commentsInput.trim()) {
+    //   setFileInfoErrorMsg('Please enter comments.');
+    //   return;
+    // }
     setFileInfoErrorMsg('');
     setFileInfoSuccessMsg('');
     setIsSubmittingFileInfo(true);
@@ -1811,6 +1811,9 @@ const handleDeleteDoc = async (docId) => {
                         const fileName = doc.original_name || doc.file_name || '—';
                         const sizeStr = doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : '—';
                         const uploadDate = doc.createdAt ? formatDate(doc.createdAt) : '—';
+                        const fileUrl = doc.file_path
+                          ? (doc.file_path.startsWith('http') ? doc.file_path : `${URLS.ImageUrl}${doc.file_path}`)
+                          : null;
                         return (
                           <tr key={doc._id || i}>
                             <td>{i + 1}</td>
@@ -1818,7 +1821,27 @@ const handleDeleteDoc = async (docId) => {
                             <td style={{ fontSize: '12px', color: '#475569' }}>{fileName}</td>
                             <td style={{ fontSize: '12px', color: '#64748b' }}>{sizeStr}</td>
                             <td style={{ fontSize: '12px', color: '#64748b' }}>{uploadDate}</td>
-                            <td>
+                            <td style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                              {/* View/Preview button */}
+                              {fileUrl ? (
+                                <a
+                                  href={fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="View Document"
+                                  style={{
+                                    padding: '4px 10px', fontSize: '12px', border: '1px solid #bae6fd',
+                                    background: '#e0f2fe', color: '#0369a1', borderRadius: '4px',
+                                    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                    fontWeight: '600', textDecoration: 'none'
+                                  }}
+                                >
+                                  <Eye size={13} />
+                                </a>
+                              ) : (
+                                <span style={{ fontSize: '11px', color: '#94a3b8' }}>No file</span>
+                              )}
+                              {/* Delete button */}
                               <button
                                 type="button"
                                 onClick={() => handleDeleteDoc(doc._id || i)}
@@ -1889,13 +1912,13 @@ const handleDeleteDoc = async (docId) => {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '18px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>Comments <span style={{ color: '#dc2626' }}>*</span></label>
-                    <textarea rows="4" className="search-input-box" style={{ width: '100%', height: 'auto', fontFamily: 'inherit', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '13px' }} placeholder="Enter administrative workflow update comments..." value={commentsInput} onChange={e => setCommentsInput(e.target.value)} required />
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>Comments</label>
+                    <textarea rows="4" className="search-input-box" style={{ width: '100%', height: 'auto', fontFamily: 'inherit', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '13px' }} placeholder="Enter administrative workflow update comments..." value={commentsInput} onChange={e => setCommentsInput(e.target.value)} />
                   </div>
 
                   <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                     <button type="button" className="btn btn-secondary" style={{ padding: '8px 20px', fontWeight: '600', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', background: '#fff', color: '#475569' }} onClick={() => { setCommentsInput(''); setStatusInput(selectedMember.filestatus_name || selectedMember.current_stage || 'E-Filing Accepted & Filing Complete'); setFileTypeInput(selectedMember.file_type || 'E-Filing'); setFileInfoErrorMsg(''); }}>Reset</button>
-                    <button type="submit" disabled={isSubmittingFileInfo || !commentsInput.trim()} style={{ background: '#0076a3', padding: '8px 22px', border: 'none', fontWeight: '600', color: '#fff', borderRadius: '6px', cursor: isSubmittingFileInfo || !commentsInput.trim() ? 'not-allowed' : 'pointer', opacity: isSubmittingFileInfo || !commentsInput.trim() ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button type="submit" disabled={isSubmittingFileInfo} style={{ background: '#0076a3', padding: '8px 22px', border: 'none', fontWeight: '600', color: '#fff', borderRadius: '6px', cursor: isSubmittingFileInfo ? 'not-allowed' : 'pointer', opacity: isSubmittingFileInfo ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {isSubmittingFileInfo ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : null}
                       {isSubmittingFileInfo ? 'Submitting...' : 'Submit Update'}
                     </button>

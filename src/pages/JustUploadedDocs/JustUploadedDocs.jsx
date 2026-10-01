@@ -410,6 +410,43 @@ export default function JustUploadedDocs({ selectedYear, setSelectedYear }) {
     }
   };
 
+  const markDocumentsViewed = async (documents) => {
+    if (!Array.isArray(documents) || documents.length === 0) return;
+    const token = getAuthToken();
+    for (const doc of documents) {
+      const docId = typeof doc === 'string' ? doc : (doc._id || doc.id || doc.documentId || doc.document_id);
+      if (!docId) continue;
+      let primarySource = doc.source;
+      if (!primarySource) {
+        primarySource = (doc.uploaded_by === 'Admin' || doc.isAdminUploaded) ? 'Admin' : 'User';
+      }
+      try {
+        const res = await fetch(URLS.MarkDocumentViewed, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ documentId: String(docId), source: primarySource })
+        });
+        if (res.status === 404) {
+          const fallbackSource = primarySource === 'Admin' ? 'User' : 'Admin';
+          await fetch(URLS.MarkDocumentViewed, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ documentId: String(docId), source: fallbackSource })
+          });
+        }
+      } catch (err) {
+        console.warn('markDocumentViewed error for doc', docId, err);
+      }
+    }
+  };
+
+  const handleViewMember = (client) => {
+    setSelectedMember(client);
+    if (Array.isArray(client.uploaded_documents) && client.uploaded_documents.length > 0) {
+      markDocumentsViewed(client.uploaded_documents);
+    }
+  };
+
   useEffect(() => {
     fetchYears();
   }, []);
@@ -582,7 +619,7 @@ export default function JustUploadedDocs({ selectedYear, setSelectedYear }) {
                                 type="button"
                                 className="btn"
                                 style={{ backgroundColor: '#5cb85c', color: '#ffffff', padding: '6px 12px', fontSize: '13px', borderRadius: '4px', border: 'none', cursor: 'pointer' }}
-                                onClick={() => setSelectedMember(client)}
+                                onClick={() => handleViewMember(client)}
                               >
                                 View
                               </button>
@@ -628,4 +665,4 @@ export default function JustUploadedDocs({ selectedYear, setSelectedYear }) {
       />
     </div>
   );
-}
+};
