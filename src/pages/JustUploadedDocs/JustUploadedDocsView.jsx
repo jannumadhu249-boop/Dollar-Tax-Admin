@@ -50,6 +50,7 @@ export const WORKFLOW_STATUSES = [
 
 export const STATUS_CODE_MAP = {
   'Registered Users': 'RGO',
+  'Registered Only': 'RGO', // Alias for Registered Users
   'Scheduling Pending': 'SP',
   'Information Pending': 'BIP',
   'Basic Information Pending': 'BIP',
@@ -653,6 +654,7 @@ export default function JustUploadedDocsView({
     member?.file_status_name || member?.filestatus_name || CODE_TO_STATUS_NAME[member?.file_status] || 'E-Filing Accepted & Filing Complete'
   );
   const [commentsInput, setCommentsInput] = useState('');
+  const [commentPopup, setCommentPopup] = useState(null); // For viewing full comments
   const [isSubmittingFileInfo, setIsSubmittingFileInfo] = useState(false);
   const [fileInfoSuccessMsg, setFileInfoSuccessMsg] = useState('');
   const [fileInfoErrorMsg, setFileInfoErrorMsg] = useState('');
@@ -1950,20 +1952,52 @@ export default function JustUploadedDocsView({
                   <thead><tr><th>S.No</th><th>Filing Type</th><th>Status</th><th>Comments</th><th>Created By</th><th>Date & Time</th></tr></thead>
                   <tbody>
                     {statusHistory.length > 0 ? (
-                      statusHistory.map((c, i) => (
-                        <tr key={c._id || i}>
-                          <td>{i + 1}</td>
-                          <td style={{ fontWeight: '500' }}>{c.file_type || member?.filing_type || member?.file_type || '—'}</td>
-                          <td>
-                            <span style={{ background: c.status?.includes('EFA') || c.status_name?.includes('Complete') ? '#ecfdf5' : '#f0f9ff', color: c.status?.includes('EFA') || c.status_name?.includes('Complete') ? '#047857' : '#0369a1', border: '1px solid #bae6fd', padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '600', display: 'inline-block' }}>
-                              {c.status_name || CODE_TO_STATUS_NAME[c.status] || c.status || '—'}
-                            </span>
-                          </td>
-                          <td style={{ color: '#334155' }}>{c.comments || '—'}</td>
-                          <td style={{ fontSize: '12px', color: '#64748b' }}>{c.createdBy || 'Admin'}</td>
-                          <td style={{ fontSize: '12px', color: '#64748b' }}>{c.createdAt ? formatDate(c.createdAt) : '—'}</td>
-                        </tr>
-                      ))
+                      statusHistory.map((c, i) => {
+                        const MAX_COMMENT_LENGTH = 100;
+                        const comment = c.comments || '—';
+                        const isTruncated = comment.length > MAX_COMMENT_LENGTH;
+                        
+                        return (
+                          <tr key={c._id || i}>
+                            <td>{i + 1}</td>
+                            <td style={{ fontWeight: '500' }}>{c.file_type || member?.filing_type || member?.file_type || '—'}</td>
+                            <td>
+                              <span style={{ background: c.status?.includes('EFA') || c.status_name?.includes('Complete') ? '#ecfdf5' : '#f0f9ff', color: c.status?.includes('EFA') || c.status_name?.includes('Complete') ? '#047857' : '#0369a1', border: '1px solid #bae6fd', padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '600', display: 'inline-block' }}>
+                                {c.status_name || CODE_TO_STATUS_NAME[c.status] || c.status || '—'}
+                              </span>
+                            </td>
+                            <td style={{ color: '#334155', maxWidth: '350px' }}>
+                              {isTruncated ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '250px' }}>
+                                    {comment.substring(0, MAX_COMMENT_LENGTH)}...
+                                  </span>
+                                  <button
+                                    onClick={() => setCommentPopup({ text: comment })}
+                                    style={{
+                                      background: '#e0f2fe',
+                                      border: '1px solid #bae6fd',
+                                      color: '#0369a1',
+                                      padding: '3px 8px',
+                                      borderRadius: '4px',
+                                      fontSize: '11px',
+                                      fontWeight: '600',
+                                      cursor: 'pointer',
+                                      whiteSpace: 'nowrap'
+                                    }}
+                                  >
+                                    View
+                                  </button>
+                                </div>
+                              ) : (
+                                <span>{comment}</span>
+                              )}
+                            </td>
+                            <td style={{ fontSize: '12px', color: '#64748b' }}>{c.createdBy || 'Admin'}</td>
+                            <td style={{ fontSize: '12px', color: '#64748b' }}>{c.createdAt ? formatDate(c.createdAt) : '—'}</td>
+                          </tr>
+                        );
+                      })
                     ) : (
                       <tr>
                         <td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: '#94a3b8' }}>
@@ -2002,6 +2036,71 @@ export default function JustUploadedDocsView({
         bankData={profileData?.bankDetails}
         memberName={displayName}
       />
+
+      {/* Comment Popup Modal */}
+      {commentPopup && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
+        }}>
+          <div style={{
+            background: '#ffffff', borderRadius: '14px', maxWidth: '600px', width: '100%',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', overflow: 'hidden'
+          }}>
+            {/* Header */}
+            <div style={{
+              background: 'linear-gradient(135deg, #0076a3, #005f8a)',
+              padding: '14px 18px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: '6px', padding: '5px', display: 'flex' }}>
+                  <MessageSquare size={16} color="#fff" />
+                </div>
+                <span style={{ color: '#fff', fontWeight: '700', fontSize: '14px' }}>Full Comment</span>
+              </div>
+              <button
+                onClick={() => setCommentPopup(null)}
+                style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', opacity: 0.85, padding: '2px' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            {/* Body */}
+            <div style={{ padding: '20px' }}>
+              <div style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '14px 16px',
+                fontSize: '13px',
+                color: '#1e293b',
+                lineHeight: '1.65',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                maxHeight: '340px',
+                overflowY: 'auto'
+              }}>
+                {commentPopup.text}
+              </div>
+            </div>
+            {/* Footer */}
+            <div style={{ padding: '10px 20px 16px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setCommentPopup(null)}
+                style={{
+                  padding: '8px 20px', border: '1px solid #cbd5e1',
+                  borderRadius: '6px', background: '#fff', color: '#475569',
+                  fontSize: '13px', fontWeight: '500', cursor: 'pointer'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

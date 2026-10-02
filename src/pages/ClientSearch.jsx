@@ -2,8 +2,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Eye, EyeOff, User, Users, UserCheck, Landmark, MapPin,
-  FileDown, Clock, CreditCard, UploadCloud, Download,
-  ChevronLeft, Loader2, Edit3, Plus, MessageSquare,
+  FileDown, Clock, CreditCard, UploadCloud, Download, MessageSquare,
+  ChevronLeft, Loader2, Edit3, Plus,
   RefreshCw, CheckCircle, X, Trash2, FileText,
   Shield
 } from 'lucide-react';
@@ -52,6 +52,7 @@ const WORKFLOW_STATUSES = [
 
 const STATUS_CODE_MAP = {
   'Registered Users': 'RGO',
+  'Registered Only': 'RGO', // Alias for Registered Users
   'Scheduling Pending': 'SP',
   'Information Pending': 'BIP',
   'Interview Pending': 'IP',
@@ -599,6 +600,7 @@ export default function ClientSearch({ member, selectedYear, setSelectedYear }) 
   const [fileTypeInput, setFileTypeInput] = useState('E-Filing');
   const [statusInput, setStatusInput] = useState('E-Filing Accepted & Filing Complete');
   const [commentsInput, setCommentsInput] = useState('');
+  const [commentPopup, setCommentPopup] = useState(null); // For viewing full comments
   const [isSubmittingFileInfo, setIsSubmittingFileInfo] = useState(false);
   const [fileInfoSuccessMsg, setFileInfoSuccessMsg] = useState('');
   const [fileInfoErrorMsg, setFileInfoErrorMsg] = useState('');
@@ -827,14 +829,26 @@ export default function ClientSearch({ member, selectedYear, setSelectedYear }) 
     try {
       const token = getAuthToken();
       const statusCode = STATUS_CODE_MAP[statusInput] || statusInput;
-      const payload = { file_type: fileTypeInput, status: statusCode, comments: commentsInput.trim() };
+      
+      // Build payload based on what API expects
+      const payload = {
+        file_type: fileTypeInput,
+        status: statusCode,
+        comments: commentsInput.trim() || ''
+      };
+
+      console.log('📤 Submitting File Info:', { memberId, statusName: statusInput, statusCode, payload });
 
       const res = await fetch(`${URLS.CreateFileInfo}${memberId}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+      
+      console.log('📥 API Response Status:', res.status);
       const data = await res.json();
+      console.log('📥 API Response Data:', data);
+      
       if (res.ok && data.success) {
         setFileInfoSuccessMsg(data.message || 'Status updated successfully.');
         setCommentsInput('');
@@ -845,10 +859,12 @@ export default function ClientSearch({ member, selectedYear, setSelectedYear }) 
         }
         setTimeout(() => setFileInfoSuccessMsg(''), 3000);
       } else {
-        setFileInfoErrorMsg(data.message || 'Failed to update status.');
+        const errorMsg = data.message || data.error || 'Failed to update status.';
+        console.error('❌ API Error:', errorMsg, data);
+        setFileInfoErrorMsg(errorMsg);
       }
     } catch (err) {
-      console.error('Create file info error:', err);
+      console.error('❌ Create file info error:', err);
       setFileInfoErrorMsg('Network error. Please try again.');
     } finally {
       setIsSubmittingFileInfo(false);
@@ -1898,7 +1914,7 @@ const handleDeleteDoc = async (docId) => {
                       <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>Filing Type <span style={{ color: '#dc2626' }}>*</span></label>
                       <select className="search-input-box" style={{ width: '100%', background: '#fff', padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '13px' }} value={fileTypeInput} onChange={e => setFileTypeInput(e.target.value)}>
                         <option value="E-Filing">E-Filing</option>
-                        <option value="Paper-Filing">Paper Filing</option>
+                        <option value="Paper Filing">Paper Filing</option>
                       </select>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -1944,20 +1960,52 @@ const handleDeleteDoc = async (docId) => {
                       <thead><tr><th>S.No</th><th>Filing Type</th><th>Status</th><th>Comments</th><th>Created By</th><th>Date & Time</th></tr></thead>
                       <tbody>
                         {statusHistory.length > 0 ? (
-                          statusHistory.map((c, i) => (
-                            <tr key={c._id || i}>
-                              <td>{i + 1}</td>
-                              <td style={{ fontWeight: '500' }}>{c.file_type || selectedMember.file_type || '—'}</td>
-                              <td>
-                                <span style={{ background: c.status?.includes('EFA') || c.status_name?.includes('Complete') ? '#ecfdf5' : '#f0f9ff', color: c.status?.includes('EFA') || c.status_name?.includes('Complete') ? '#047857' : '#0369a1', border: '1px solid #bae6fd', padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '600', display: 'inline-block' }}>
-                                  {c.status_name || c.status || '—'}
-                                </span>
-                              </td>
-                              <td style={{ color: '#334155' }}>{c.comments || '—'}</td>
-                              <td style={{ fontSize: '12px', color: '#64748b' }}>{c.createdBy || 'Admin'}</td>
-                              <td style={{ fontSize: '12px', color: '#64748b' }}>{c.createdAt ? formatDate(c.createdAt) : '—'}</td>
-                            </tr>
-                          ))
+                          statusHistory.map((c, i) => {
+                            const MAX_COMMENT_LENGTH = 100;
+                            const comment = c.comments || '—';
+                            const isTruncated = comment.length > MAX_COMMENT_LENGTH;
+                            
+                            return (
+                              <tr key={c._id || i}>
+                                <td>{i + 1}</td>
+                                <td style={{ fontWeight: '500' }}>{c.file_type || selectedMember.file_type || '—'}</td>
+                                <td>
+                                  <span style={{ background: c.status?.includes('EFA') || c.status_name?.includes('Complete') ? '#ecfdf5' : '#f0f9ff', color: c.status?.includes('EFA') || c.status_name?.includes('Complete') ? '#047857' : '#0369a1', border: '1px solid #bae6fd', padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '600', display: 'inline-block' }}>
+                                    {c.status_name || c.status || '—'}
+                                  </span>
+                                </td>
+                                <td style={{ color: '#334155', maxWidth: '350px' }}>
+                                  {isTruncated ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '250px' }}>
+                                        {comment.substring(0, MAX_COMMENT_LENGTH)}...
+                                      </span>
+                                      <button
+                                        onClick={() => setCommentPopup({ text: comment })}
+                                        style={{
+                                          background: '#e0f2fe',
+                                          border: '1px solid #bae6fd',
+                                          color: '#0369a1',
+                                          padding: '3px 8px',
+                                          borderRadius: '4px',
+                                          fontSize: '11px',
+                                          fontWeight: '600',
+                                          cursor: 'pointer',
+                                          whiteSpace: 'nowrap'
+                                        }}
+                                      >
+                                        View
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <span>{comment}</span>
+                                  )}
+                                </td>
+                                <td style={{ fontSize: '12px', color: '#64748b' }}>{c.createdBy || 'Admin'}</td>
+                                <td style={{ fontSize: '12px', color: '#64748b' }}>{c.createdAt ? formatDate(c.createdAt) : '—'}</td>
+                              </tr>
+                            );
+                          })
                         ) : (
                           <tr>
                             <td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: '#94a3b8' }}>
@@ -2118,6 +2166,106 @@ const handleDeleteDoc = async (docId) => {
         bankData={profileData?.bankDetails}
         memberName={profileData?.personalInfo ? `${profileData.personalInfo.first_name || ''} ${profileData.personalInfo.last_name || ''}`.trim() : selectedMember ? `${selectedMember.first_name || ''} ${selectedMember.last_name || ''}`.trim() : ''}
       />
+
+      {/* Comment Popup Modal */}
+      {commentPopup && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15,23,42,0.55)',
+            backdropFilter: 'blur(3px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 99999,
+            padding: '16px'
+          }}
+          onClick={() => setCommentPopup(null)}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '12px',
+              width: '100%',
+              maxWidth: '600px',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.25)',
+              overflow: 'hidden',
+              animation: 'fadeIn 0.2s ease-out'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div
+              style={{
+                background: 'linear-gradient(135deg, #0076a3, #005f8a)',
+                padding: '16px 20px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <MessageSquare size={20} color="#fff" />
+                <h3 style={{ margin: 0, color: '#fff', fontWeight: '700', fontSize: '15px' }}>
+                  Full Comment
+                </h3>
+              </div>
+              <button
+                onClick={() => setCommentPopup(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  opacity: 0.9
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: '20px 24px', maxHeight: '400px', overflowY: 'auto' }}>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: '14px',
+                  lineHeight: '1.6',
+                  color: '#1e293b',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word'
+                }}
+              >
+                {commentPopup.text}
+              </p>
+            </div>
+            <div
+              style={{
+                padding: '12px 20px',
+                borderTop: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'flex-end'
+              }}
+            >
+              <button
+                onClick={() => setCommentPopup(null)}
+                style={{
+                  padding: '8px 18px',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  background: '#fff',
+                  color: '#475569',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

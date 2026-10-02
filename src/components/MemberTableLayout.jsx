@@ -865,6 +865,7 @@ const handleDeleteDoc = async (docId) => {
   // Status name to code mapping
   const STATUS_CODE_MAP = {
     'Registered Users': 'RGO',
+    'Registered Only': 'RGO', // Alias for Registered Users
     'Basic Information Pending': 'BIP',
     'Scheduling Pending': 'SP',
     'Interview Pending': 'IP',
@@ -2473,7 +2474,7 @@ const handleDeleteDoc = async (docId) => {
                                 </span>
                               </td>
                               <td style={{ color: '#334155', maxWidth: '240px', overflow: 'hidden', verticalAlign: 'middle' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', width: '100%' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   <span
                                     style={{
                                       fontSize: '13px',
