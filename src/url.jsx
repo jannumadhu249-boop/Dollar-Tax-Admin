@@ -1,4 +1,6 @@
-const base_url = "http://187.127.143.141:4000/"
+// const base_url = "http://187.127.143.141:4000/"
+
+const base_url = "https://api.minimumtax.com/"
 
 export const URLS = {
 
@@ -123,5 +125,12 @@ export const URLS = {
 
     //Query Messages
     GetQueryMessages : base_url + "v1/minimumTax/admin/dashboard/getDashboardMessages",
+
+    //Send Mail
+    SendMail : base_url + "v1/minimumTax/admin/customMail/sendMail",
+    TestMail : base_url + "v1/minimumTax/admin/customMail/testMail",
+
+    //Mail Gun
+    SendMailGun : base_url + "v1/minimumTax/admin/excelMail/sendExcelMail",
 
 }

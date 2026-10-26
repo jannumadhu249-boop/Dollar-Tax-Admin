@@ -865,7 +865,7 @@ const handleDeleteDoc = async (docId) => {
   // Status name to code mapping
   const STATUS_CODE_MAP = {
     'Registered Users': 'RGO',
-    'Registered Only': 'RGO', // Alias for Registered Users
+    'Registered Only': 'RGO',
     'Basic Information Pending': 'BIP',
     'Scheduling Pending': 'SP',
     'Interview Pending': 'IP',

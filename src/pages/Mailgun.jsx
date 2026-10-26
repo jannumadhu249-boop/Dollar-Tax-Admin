@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import logoLogin from '../assets/logo-login.png';
+import { URLS } from '../url';
+import { Send, CheckCircle, XCircle, X, Loader } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────────────
    CKEditor 4 wrapper component
@@ -152,9 +154,12 @@ function CKEditorField({ id, initialData, onChange }) {
 ───────────────────────────────────────────────────────────── */
 export default function Mailgun({ selectedYear = '' }) {
   const [excelFile, setExcelFile] = useState(null);
+  const excelInputRef = useRef(null);
   const [subject, setSubject] = useState('');
   const [editorContent, setEditorContent] = useState(EMAIL_TEMPLATE);
   const [ckReady, setCkReady] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null);
 
   /* Wait until CKEditor CDN script is fully loaded */
   useEffect(() => {
@@ -168,15 +173,71 @@ export default function Mailgun({ selectedYear = '' }) {
     check();
   }, []);
 
-  const handleSend = () => {
-    if (!subject.trim()) {
-      alert('Please enter a Subject before sending.');
+  /* Auto-dismiss toast after 3 s */
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const showToast = (type, text) => setToast({ type, text });
+
+  const getToken = () => {
+    for (const key of ['authToken', 'token', 'adminToken', 'accessToken', 'jwt']) {
+      const v = sessionStorage.getItem(key) || localStorage.getItem(key);
+      if (v) return v;
+    }
+    return '';
+  };
+
+  const resetForm = () => {
+    setSubject('');
+    setExcelFile(null);
+    if (excelInputRef.current) excelInputRef.current.value = '';
+    // Reset CKEditor content back to template
+    const ck = window.CKEDITOR?.instances?.['mg-editor'];
+    if (ck) ck.setData(EMAIL_TEMPLATE);
+    setEditorContent(EMAIL_TEMPLATE);
+  };
+
+  const handleSend = async () => {
+    if (!excelFile) {
+      showToast('error', 'Please choose an Excel file before sending.');
       return;
     }
-    const content = window.CKEDITOR?.instances?.['mg-editor']?.getData() || editorContent;
-    alert(
-      `✅ Mail queued!\n\nYear: ${selectedYear.replace('TY', '20')}\nSubject: ${subject}\nContent length: ${content.length} chars`
-    );
+    if (!subject.trim()) {
+      showToast('error', 'Please enter a Subject before sending.');
+      return;
+    }
+
+    const body = window.CKEDITOR?.instances?.['mg-editor']?.getData() || editorContent;
+
+    const formData = new FormData();
+    formData.append('excel', excelFile);
+    formData.append('subject', subject);
+    formData.append('body', body);
+
+    try {
+      setLoading(true);
+      const response = await fetch(URLS.SendMailGun, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getToken()}` },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showToast('success', data?.message || 'Emails dispatched successfully via Mailgun!');
+        resetForm();
+      } else {
+        showToast('error', data?.message || 'Failed to send emails. Please try again.');
+      }
+    } catch (err) {
+      showToast('error', 'Network error. Could not reach the server.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const yearLabel = selectedYear.replace('TY', '20');
@@ -188,9 +249,53 @@ export default function Mailgun({ selectedYear = '' }) {
         Send Mail to All Register in {yearLabel} Tax Year
       </h2>
 
+      {/* Toast notification */}
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: '24px',
+          right: '24px',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '10px',
+          backgroundColor: toast.type === 'success' ? '#f0fdf4' : '#fef2f2',
+          border: `1px solid ${toast.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
+          borderLeft: `4px solid ${toast.type === 'success' ? '#16a34a' : '#dc2626'}`,
+          borderRadius: '8px',
+          padding: '14px 16px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+          maxWidth: '360px',
+          animation: 'slideInRight 0.3s ease-out',
+        }}>
+          {toast.type === 'success'
+            ? <CheckCircle size={18} color="#16a34a" style={{ flexShrink: 0, marginTop: '1px' }} />
+            : <XCircle size={18} color="#dc2626" style={{ flexShrink: 0, marginTop: '1px' }} />
+          }
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '13px', fontWeight: '700', color: toast.type === 'success' ? '#15803d' : '#b91c1c', marginBottom: '2px' }}>
+              {toast.type === 'success' ? 'Mail Sent' : 'Error'}
+            </div>
+            <div style={{ fontSize: '12px', color: toast.type === 'success' ? '#166534' : '#991b1b', lineHeight: '1.4' }}>
+              {toast.text}
+            </div>
+          </div>
+          <button onClick={() => setToast(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0', color: '#94a3b8', flexShrink: 0 }}>
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slideInRight {
+          from { opacity: 0; transform: translateX(40px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+      `}</style>
+
       {/* ── Choose Excel File ── */}
       <div style={{ marginBottom: '14px' }}>
-        <label className="mg-label">Choose Excel File</label>
+        <label className="mg-label">Choose Excel File <span style={{ color: '#dc2626' }}>*</span></label>
         <div className="mg-file-wrapper">
           <span className="mg-file-text">
             {excelFile ? excelFile.name : 'No file chosen'}
@@ -198,6 +303,7 @@ export default function Mailgun({ selectedYear = '' }) {
           <label className="mg-browse-btn">
             Browse...
             <input
+              ref={excelInputRef}
               type="file"
               accept=".xlsx,.xls,.csv"
               style={{ display: 'none' }}
@@ -250,8 +356,14 @@ export default function Mailgun({ selectedYear = '' }) {
       </div>
 
       {/* ── Send Mail button ── */}
-      <button className="mg-send-btn" onClick={handleSend}>
-        Send Mail
+      <button
+        className="mg-send-btn"
+        onClick={handleSend}
+        disabled={loading}
+        style={{ opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+      >
+        {loading ? <Loader size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={15} />}
+        {loading ? 'Sending...' : 'Send Mail'}
       </button>
     </div>
   );
